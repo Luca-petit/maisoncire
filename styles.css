@@ -1096,7 +1096,7 @@ main{ padding-bottom: 28px; }
 
   .hero0{
     min-height: 87vh;
-    padding-top: 20px;
+    padding-top: 70px;
     padding-bottom: 48px;
   }
   .hero0__title{
@@ -1475,3 +1475,75 @@ main{ padding-bottom: 28px; }
 }
 
 .reviewForm__row{ display:flex; gap: 10px; flex-wrap: wrap; }
+
+/* =========================
+   Boutique – grille mobile
+========================= */
+
+@media (max-width: 768px){
+  .grid{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+}
+
+/* =========================
+   Pack Builder – grille mobile
+========================= */
+
+@media (max-width: 768px){
+  .packPickGrid{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+}
+
+/* Supprimer le bouton +1 dans le pack builder */
+.packPick__actions [data-pack-addone]{
+  display: none !important;
+}
+
+/* Supprimer définitivement la bulle quantité dans les packs */
+.packPick__title .badge {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .ratingRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .stars {
+    font-size: 14px;
+  }
+
+  .ratingMeta {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+
+  .btnReview {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+
+
+/* iOS Safari: stop bleu au tap */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Stop style bleu des liens */
+a, a:visited { color: inherit; text-decoration: none; }
+
+/* Stop auto-colorisation iOS (tél / mail) */
+a[href^="tel"],
+a[href^="mailto"] { color: inherit !important; }
+
+/* Focus propre (évite contour bleu) */
+:focus { outline: none; }
+:focus-visible { outline: 3px solid rgba(109,94,252,.35); outline-offset: 3px; }
+
