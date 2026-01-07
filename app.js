@@ -4,6 +4,8 @@
    ✅ Includes: Pack Wizard (Step 1 choose pack, Step 2 compose, then add pack)
    ✅ Includes: Carte Cadeau (live preview + add to cart + remove in cart)
    ✅ NEW: Avis produits (moyenne + liste + ajout) + étoiles cliquables
+   ✅ FIX: Stock “temps réel” (singles + packs) = jamais dépasser le stock total
+   ✅ FIX: Packs: grisé/indispo + suppression bouton +1 + suppression badge x0
    ========================================================= */
 
 /* ==========
@@ -15,7 +17,6 @@ const CART_KEY = "candle_shop_cart_v2";
 const NEWS_KEY = "candle_shop_newsletter_v1";
 const REVIEWS_KEY = "candle_shop_reviews_v1";
 const NOTIFY_KEY = "candle_shop_notify_v1";
-
 
 /* ==========
   Default data
@@ -57,23 +58,22 @@ function safeJSON(raw, fallback) {
   try { return JSON.parse(raw); } catch { return fallback; }
 }
 
-function loadNotifyMap(){
+function loadNotifyMap() {
   return safeJSON(localStorage.getItem(NOTIFY_KEY), {}) || {};
 }
-function saveNotifyMap(map){
+function saveNotifyMap(map) {
   localStorage.setItem(NOTIFY_KEY, JSON.stringify(map));
 }
-function isNotified(productId){
+function isNotified(productId) {
   const map = loadNotifyMap();
   return !!map[productId];
 }
-function setNotified(productId, on){
+function setNotified(productId, on) {
   const map = loadNotifyMap();
   if (on) map[productId] = true;
   else delete map[productId];
   saveNotifyMap(map);
 }
-
 
 /* ==========
   Products storage
@@ -98,11 +98,6 @@ function saveProducts(products) {
 
 /* ==========
   Cart storage (singles + packs + giftcards)
-  cart = {
-    skus: { [id]: qty },
-    packs: [ {id, name, items, value, free, total} ],
-    giftcards: [ {id, amount, color, receiver, sendDate, fromName, message} ]
-  }
 ========== */
 
 function loadCart() {
@@ -128,9 +123,6 @@ function saveCart(cart) {
 
 /* ==========
   Offers logic (SINGLES)
-  - 5 -> 2 free
-  - 3 -> 1 free
-  Apply: first 5-groups, then 3-groups on remainder
 ========== */
 
 function computeFreeUnitsSingles(qty) {
@@ -141,10 +133,7 @@ function computeFreeUnitsSingles(qty) {
 }
 
 /* ==========
-  Offers logic (PACKS) — Mix allowed
-  - pack 3 => 1 free
-  - pack 5 => 2 free
-  Freebies = cheapest units in the pack
+  Offers logic (PACKS)
 ========== */
 
 function sumPackUnits(packItems) {
@@ -227,23 +216,16 @@ function starsHTML(value) {
 
 /* ==========
   Clickable stars input (modal)
-  - Works with:
-    A) <div id="reviewStars"></div> + <input type="hidden" id="reviewRating" value="5">
-    B) fallback: <select id="reviewRating"> (old)
 ========== */
 
 function setReviewRating(rating) {
   const r = Math.max(1, Math.min(5, Number(rating) || 5));
-
-  // hidden input OR select (compat)
   if (els.reviewRatingInput) els.reviewRatingInput.value = String(r);
   if (els.reviewRatingSelect) els.reviewRatingSelect.value = String(r);
-
   renderReviewStarsUI(r);
 }
 
 function getReviewRating() {
-  // Prefer hidden input
   const v1 = els.reviewRatingInput?.value;
   const v2 = els.reviewRatingSelect?.value;
   const n = Number(v1 || v2 || 0);
@@ -275,17 +257,14 @@ function renderReviewStarsUI(current) {
 ========== */
 
 let products = loadProducts();
-let cart = loadCart(); // { skus: {}, packs: [], giftcards: [] }
+let cart = loadCart();
 
-/* Pack selection state */
 let packSelection = {};
 let chosenPackSize = null;
 
-/* Reviews modal state */
 let currentReviewProductId = null;
 
 let currentPdpId = null;
-
 
 /* ==========
   DOM
@@ -369,7 +348,6 @@ const els = {
   gcReset: document.getElementById("gcReset"),
   gcMsg: document.getElementById("gcMsg"),
 
-  // If you added custom amount UI (optional)
   gcCustomWrap: document.getElementById("gcCustomWrap"),
   gcCustomAmount: document.getElementById("gcCustomAmount"),
 
@@ -383,42 +361,35 @@ const els = {
 
   reviewForm: document.getElementById("reviewForm"),
   reviewName: document.getElementById("reviewName"),
-
-  // Clickable stars UI (new)
-  reviewStars: document.getElementById("reviewStars"),          // <div id="reviewStars"></div>
-  reviewRatingInput: document.getElementById("reviewRating"),   // <input type="hidden" id="reviewRating" value="5">
-  // Fallback select (old)
-  reviewRatingSelect: document.getElementById("reviewRatingSelect"), // if you keep a <select id="reviewRatingSelect">
-
+  reviewStars: document.getElementById("reviewStars"),
+  reviewRatingInput: document.getElementById("reviewRating"),
+  reviewRatingSelect: document.getElementById("reviewRatingSelect"),
   reviewText: document.getElementById("reviewText"),
   reviewMsg: document.getElementById("reviewMsg"),
 
-    // Admin reviews
+  // Admin reviews
   adminReviewsCount: document.getElementById("adminReviewsCount"),
   adminReviewsAvg: document.getElementById("adminReviewsAvg"),
   adminReviewsList: document.getElementById("adminReviewsList"),
   adminReviewsClear: document.getElementById("adminReviewsClear"),
   adminReviewsMsg: document.getElementById("adminReviewsMsg"),
 
-
   // PDP modal
-pdpModal: document.getElementById("pdpModal"),
-pdpOverlay: document.getElementById("pdpOverlay"),
-pdpClose: document.getElementById("pdpClose"),
-pdpTitle: document.getElementById("pdpTitle"),
-pdpImg: document.getElementById("pdpImg"),
-pdpPrice: document.getElementById("pdpPrice"),
-pdpStock: document.getElementById("pdpStock"),
-pdpStars: document.getElementById("pdpStars"),
-pdpRatingMeta: document.getElementById("pdpRatingMeta"),
-pdpDesc: document.getElementById("pdpDesc"),
-pdpAddToCart: document.getElementById("pdpAddToCart"),
-pdpMsg: document.getElementById("pdpMsg"),
+  pdpModal: document.getElementById("pdpModal"),
+  pdpOverlay: document.getElementById("pdpOverlay"),
+  pdpClose: document.getElementById("pdpClose"),
+  pdpTitle: document.getElementById("pdpTitle"),
+  pdpImg: document.getElementById("pdpImg"),
+  pdpPrice: document.getElementById("pdpPrice"),
+  pdpStock: document.getElementById("pdpStock"),
+  pdpStars: document.getElementById("pdpStars"),
+  pdpRatingMeta: document.getElementById("pdpRatingMeta"),
+  pdpDesc: document.getElementById("pdpDesc"),
+  pdpAddToCart: document.getElementById("pdpAddToCart"),
+  pdpMsg: document.getElementById("pdpMsg"),
 
-pdpNotifyRow: document.getElementById("pdpNotifyRow"),
-pdpNotifyToggle: document.getElementById("pdpNotifyToggle"),
-
-
+  pdpNotifyRow: document.getElementById("pdpNotifyRow"),
+  pdpNotifyToggle: document.getElementById("pdpNotifyToggle"),
 };
 
 if (els.year) els.year.textContent = new Date().getFullYear();
@@ -429,6 +400,36 @@ if (els.year) els.year.textContent = new Date().getFullYear();
 
 function getProduct(id) {
   return products.find(p => p.id === id);
+}
+
+function reservedInPacks(productId) {
+  let n = 0;
+  for (const pack of (cart.packs || [])) {
+    for (const it of (pack.items || [])) {
+      if (it.id === productId) n += (Number(it.qty) || 0);
+    }
+  }
+  return n;
+}
+
+function reservedTotal(productId) {
+  const singles = Number(cart.skus?.[productId] || 0);
+  const packs = reservedInPacks(productId);
+  return singles + packs;
+}
+
+// Stock restant SANS compter le pack en cours (wizard)
+function availableStock(productId) {
+  const p = getProduct(productId);
+  if (!p) return 0;
+  return Math.max(0, (Number(p.stock) || 0) - reservedTotal(productId));
+}
+
+// Stock restant EN comptant la sélection actuelle du pack
+function availableStockForPackBuilder(productId) {
+  const left = availableStock(productId);
+  const inWizard = Number(packSelection?.[productId] || 0);
+  return Math.max(0, left - inWizard);
 }
 
 function totalCartCount() {
@@ -443,7 +444,7 @@ function toast(msg) {
   els.checkoutMsg.textContent = msg;
 }
 
-function uiToast(text){
+function uiToast(text) {
   const t = document.getElementById("toast");
   if (!t) return;
   t.textContent = text;
@@ -452,7 +453,7 @@ function uiToast(text){
   uiToast._t = setTimeout(() => t.classList.remove("is-on"), 1400);
 }
 
-function bumpCartIcon(){
+function bumpCartIcon() {
   if (!els.cartBtn) return;
   els.cartBtn.classList.remove("bump");
   void els.cartBtn.offsetWidth;
@@ -513,7 +514,7 @@ function selectPackType(size) {
 }
 
 /* ==========
-  Render products (with images + ratings)
+  Render products (shop grid) — FIX stock temps réel
 ========== */
 
 function renderProducts() {
@@ -522,7 +523,7 @@ function renderProducts() {
   els.grid.innerHTML = "";
 
   for (const p of products) {
-    const inStock = p.stock > 0;
+    const inStock = availableStock(p.id) > 0;
 
     const card = document.createElement("article");
     card.className = "card" + (inStock ? "" : " is-out");
@@ -552,32 +553,36 @@ function renderProducts() {
   }
 }
 
+/* ==========
+  PDP modal
+========== */
 
-function openPdp(productId){
+function openPdp(productId) {
   const p = getProduct(productId);
   if (!p || !els.pdpModal) return;
 
+  const left = availableStock(productId);
+
   // Rupture : afficher switch "me prévenir", désactiver add
-if (els.pdpAddToCart) els.pdpAddToCart.disabled = !(p.stock > 0);
+  if (els.pdpAddToCart) els.pdpAddToCart.disabled = !(left > 0);
 
-if (els.pdpNotifyRow) {
-  const out = !(p.stock > 0);
-  els.pdpNotifyRow.style.display = out ? "" : "none";
-}
+  if (els.pdpNotifyRow) {
+    const out = !(left > 0);
+    els.pdpNotifyRow.style.display = out ? "" : "none";
+  }
 
-if (els.pdpNotifyToggle) {
-  els.pdpNotifyToggle.checked = isNotified(p.id);
-}
-
+  if (els.pdpNotifyToggle) {
+    els.pdpNotifyToggle.checked = isNotified(p.id);
+  }
 
   currentPdpId = productId;
 
   if (els.pdpTitle) els.pdpTitle.textContent = p.name;
   if (els.pdpPrice) els.pdpPrice.textContent = formatEUR(p.price);
   if (els.pdpDesc) els.pdpDesc.textContent = p.desc || "";
-  if (els.pdpStock) els.pdpStock.textContent = p.stock > 0 ? `${p.stock} en stock` : "Rupture";
+  if (els.pdpStock) els.pdpStock.textContent = left > 0 ? `${left} en stock` : "Rupture";
 
-  if (els.pdpImg){
+  if (els.pdpImg) {
     els.pdpImg.src = p.image || "";
     els.pdpImg.alt = p.name;
   }
@@ -588,16 +593,14 @@ if (els.pdpNotifyToggle) {
   if (els.pdpStars) els.pdpStars.innerHTML = starsHTML(r.avg);
   if (els.pdpRatingMeta) els.pdpRatingMeta.textContent = `${avgTxt} · ${r.count} avis`;
 
-  // bouton add actif/inactif
-  if (els.pdpAddToCart) els.pdpAddToCart.disabled = !(p.stock > 0);
-
+  if (els.pdpAddToCart) els.pdpAddToCart.disabled = !(left > 0);
   if (els.pdpMsg) els.pdpMsg.textContent = "";
 
   els.pdpModal.classList.add("open");
   els.pdpModal.setAttribute("aria-hidden", "false");
 }
 
-function closePdp(){
+function closePdp() {
   if (!els.pdpModal) return;
   els.pdpModal.classList.remove("open");
   els.pdpModal.setAttribute("aria-hidden", "true");
@@ -605,23 +608,22 @@ function closePdp(){
   if (els.pdpMsg) els.pdpMsg.textContent = "";
 }
 
-
-
 /* ==========
-  Cart logic (singles)
+  Cart logic (singles) — FIX stock temps réel
 ========== */
 
 function addToCart(productId, qty = 1) {
   const p = getProduct(productId);
   if (!p) return;
 
-  const current = cart.skus[productId] || 0;
-  const next = clampQty(current + qty);
-
-  if (next > p.stock) {
+  const left = availableStock(productId);
+  if (qty > left) {
     toast(`Stock insuffisant pour “${p.name}”`);
     return;
   }
+
+  const current = cart.skus[productId] || 0;
+  const next = clampQty(current + qty);
 
   cart.skus[productId] = next;
   saveCart(cart);
@@ -642,6 +644,7 @@ function addToCart(productId, qty = 1) {
 
   renderCartBadge();
   renderCart();
+  renderProducts(); // refresh grisage live
 }
 
 function setCartQty(productId, qty) {
@@ -653,7 +656,11 @@ function setCartQty(productId, qty) {
   if (q === 0) {
     delete cart.skus[productId];
   } else {
-    if (q > p.stock) {
+    // max autorisé = stock total - (packs + autres réservations)
+    const reservedWithoutThis = reservedTotal(productId) - Number(cart.skus[productId] || 0);
+    const maxAllowed = Math.max(0, Number(p.stock || 0) - reservedWithoutThis);
+
+    if (q > maxAllowed) {
       toast(`Stock insuffisant pour “${p.name}”`);
       return;
     }
@@ -663,6 +670,7 @@ function setCartQty(productId, qty) {
   saveCart(cart);
   renderCartBadge();
   renderCart();
+  renderProducts(); // refresh grisage live
 }
 
 function clearCart() {
@@ -670,6 +678,7 @@ function clearCart() {
   saveCart(cart);
   renderCartBadge();
   renderCart();
+  renderProducts();
 }
 
 /* ==========
@@ -690,7 +699,7 @@ function closeCart() {
 }
 
 /* ==========
-  Totals (singles + packs + giftcards)
+  Totals
 ========== */
 
 function computeTotals() {
@@ -730,7 +739,7 @@ function computeTotals() {
 }
 
 /* ==========
-  Render cart (singles + packs + giftcards)
+  Render cart
 ========== */
 
 function renderCartBadge() {
@@ -840,7 +849,7 @@ function renderCart() {
 }
 
 /* ==========
-  Pack Builder (Step 2)
+  Pack Builder
 ========== */
 
 function packItemsArray() {
@@ -857,12 +866,13 @@ function renderPackPicker() {
   const units = Object.values(packSelection).reduce((a, b) => a + b, 0);
 
   for (const p of products) {
-  const qty = packSelection[p.id] || 0;
-  const inStock = p.stock > 0;
+    const qty = packSelection[p.id] || 0;
 
-  const card = document.createElement("div");
-  card.className = "packPick" + (inStock ? "" : " is-out");
+    const leftForWizard = availableStockForPackBuilder(p.id);
+    const isOut = leftForWizard <= 0;
 
+    const card = document.createElement("div");
+    card.className = "packPick" + (isOut ? " is-out" : "");
 
     const img = p.image ? `<img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" loading="lazy" />` : "";
 
@@ -872,9 +882,9 @@ function renderPackPicker() {
         <div class="packPick__title">
           <div>
             <h4>${escapeHTML(p.name)}</h4>
-            <p>${formatEUR(p.price)} · Stock ${p.stock}</p>
+            <p>${formatEUR(p.price)} · Stock ${availableStock(p.id)}</p>
           </div>
-          <span class="badge">${qty}x</span>
+          ${qty > 0 ? `<span class="badge">${qty}x</span>` : ``}
         </div>
 
         <div class="packPick__actions">
@@ -883,21 +893,15 @@ function renderPackPicker() {
             <span>${qty}</span>
             <button data-pack-inc="${p.id}" aria-label="Augmenter">+</button>
           </div>
-
-          <button class="btn btn--ghost" data-pack-addone="${p.id}">
-            +1
-          </button>
         </div>
       </div>
     `;
 
     const btnInc = card.querySelector(`[data-pack-inc="${p.id}"]`);
-    const btnAddOne = card.querySelector(`[data-pack-addone="${p.id}"]`);
     const btnDec = card.querySelector(`[data-pack-dec="${p.id}"]`);
 
     const packFull = units >= size;
-    if (btnInc) btnInc.disabled = packFull || qty >= p.stock;
-    if (btnAddOne) btnAddOne.disabled = packFull || qty >= p.stock;
+    if (btnInc) btnInc.disabled = isOut || packFull;
     if (btnDec) btnDec.disabled = qty <= 0;
 
     els.packPickGrid.appendChild(card);
@@ -932,8 +936,7 @@ function renderPackPreview() {
       .join("");
   }
 
-  // ✅ LIVE totals même si pack incomplet
-  // Valeur = somme actuelle
+  // LIVE totals même si pack incomplet
   let liveValue = 0;
   for (const it of items) {
     const p = getProduct(it.id);
@@ -942,8 +945,6 @@ function renderPackPreview() {
   }
 
   const isComplete = units === size;
-
-  // Promo appliquée uniquement si complet
   const totals = isComplete
     ? computePackTotals(items, size, products)
     : { value: liveValue, free: 0, total: liveValue };
@@ -968,7 +969,6 @@ function renderPackPreview() {
   }
 }
 
-
 function addPackToCart() {
   const size = currentPackSize();
   const items = packItemsArray();
@@ -976,10 +976,13 @@ function addPackToCart() {
 
   if (units !== size) return;
 
+  // ✅ Vérif stock restant réel (en tenant compte du panier)
   for (const it of items) {
     const p = getProduct(it.id);
     if (!p) return;
-    if (it.qty > p.stock) {
+
+    const left = availableStock(it.id);
+    if (it.qty > left) {
       if (els.packMsg) els.packMsg.textContent = `Stock insuffisant pour “${p.name}”.`;
       setTimeout(() => { if (els.packMsg) els.packMsg.textContent = ""; }, 2000);
       return;
@@ -1000,14 +1003,9 @@ function addPackToCart() {
     total: Math.round((totals.total || 0) * 100) / 100
   });
 
-  // Reserve stock immediately for the pack
-  for (const it of items) {
-    const p = getProduct(it.id);
-    if (p) p.stock = Math.max(0, p.stock - it.qty);
-  }
-  saveProducts(products);
-
+  // ✅ IMPORTANT: on NE décrémente PAS p.stock ici (sinon double réserve)
   saveCart(cart);
+
   renderProducts();
   renderCartBadge();
   renderCart();
@@ -1028,7 +1026,7 @@ function addPackToCart() {
 }
 
 /* ==========
-  Gift Card (live preview + add to cart)
+  Gift Card
 ========== */
 
 function gcSetMsg(text) {
@@ -1061,7 +1059,7 @@ function renderGiftCardPreview() {
   const amount = getGiftCardAmount() || 50;
 
   const color = (els.gcColor?.value || "violet").trim();
-els.gcPreview.dataset.color = color;
+  els.gcPreview.dataset.color = color;
 
   const receiver = (els.gcReceiverEmail?.value || "receveur@email.com").trim();
   const sendDate = formatDateFR(els.gcSendDate?.value || "");
@@ -1071,8 +1069,6 @@ els.gcPreview.dataset.color = color;
   const msg = msgRaw
     ? (fromName ? `De ${fromName} — ${msgRaw}` : msgRaw)
     : "Un petit mot… (optionnel)";
-
-  els.gcPreview.dataset.color = color;
 
   if (els.gcPreviewAmount) els.gcPreviewAmount.textContent = `${Math.round(amount)} €`;
   if (els.gcPreviewReceiver) els.gcPreviewReceiver.textContent = receiver || "receveur@email.com";
@@ -1151,7 +1147,6 @@ function openReviews(productId) {
 
   renderReviewsList(productId);
 
-  // init stars input default = 5
   if (els.reviewRatingInput && !els.reviewRatingInput.value) els.reviewRatingInput.value = "5";
   renderReviewStarsUI(getReviewRating() || 5);
 
@@ -1242,13 +1237,16 @@ function saveAdminFields(productId) {
   p.desc = nextDesc;
 
   // Clamp single cart qty
-  if (cart.skus[p.id] && cart.skus[p.id] > p.stock) {
-    cart.skus[p.id] = p.stock;
+  const reservedWithoutThis = reservedTotal(p.id) - Number(cart.skus[p.id] || 0);
+  const maxAllowed = Math.max(0, Number(p.stock || 0) - reservedWithoutThis);
+  if (cart.skus[p.id] && cart.skus[p.id] > maxAllowed) {
+    cart.skus[p.id] = maxAllowed;
     if (cart.skus[p.id] === 0) delete cart.skus[p.id];
     saveCart(cart);
   }
 
   saveProducts(products);
+
   renderProducts();
   renderCart();
   renderAdminSelect();
@@ -1274,40 +1272,35 @@ function saveNewsletterEmail(email) {
 
 document.addEventListener("click", (e) => {
 
-// Open PDP when clicking a product card (but not when clicking buttons inside)
-const openId = e.target?.closest?.("[data-pdp-open]")?.dataset?.pdpOpen;
-
-if (openId) {
-  const card = e.target?.closest?.(".card");
-  if (card){
-    card.classList.remove("flash");
-    void card.offsetWidth;
-    card.classList.add("flash");
+  // Open PDP when clicking a product card (but not when clicking buttons inside)
+  const openId = e.target?.closest?.("[data-pdp-open]")?.dataset?.pdpOpen;
+  if (openId) {
+    const card = e.target?.closest?.(".card");
+    if (card) {
+      card.classList.remove("flash");
+      void card.offsetWidth;
+      card.classList.add("flash");
+    }
+    openPdp(openId);
+    return;
   }
-  openPdp(openId);
-  return;
-}
-
 
   // Gift Card: palette couleurs (swatches)
-const sw = e.target?.closest?.(".colorSwatches .swatch");
-if (sw && sw.dataset.gcColor) {
-  const color = sw.dataset.gcColor;
+  const sw = e.target?.closest?.(".colorSwatches .swatch");
+  if (sw && sw.dataset.gcColor) {
+    const color = sw.dataset.gcColor;
 
-  // 1) stocke la couleur dans l'input hidden (source de vérité)
-  if (els.gcColor) els.gcColor.value = color;
+    if (els.gcColor) els.gcColor.value = color;
 
-  // 2) UI active state + aria
-  document.querySelectorAll(".colorSwatches .swatch").forEach(b => {
-    const isOn = b === sw;
-    b.classList.toggle("is-selected", isOn);
-    b.setAttribute("aria-checked", isOn ? "true" : "false");
-  });
+    document.querySelectorAll(".colorSwatches .swatch").forEach(b => {
+      const isOn = b === sw;
+      b.classList.toggle("is-selected", isOn);
+      b.setAttribute("aria-checked", isOn ? "true" : "false");
+    });
 
-  // 3) refresh preview
-  renderGiftCardPreview();
-  return;
-}
+    renderGiftCardPreview();
+    return;
+  }
 
   // Reviews: open modal
   const ro = e.target?.dataset?.reviewOpen;
@@ -1318,12 +1311,9 @@ if (sw && sw.dataset.gcColor) {
 
   // Reviews: clickable stars in modal
   const sp = e.target?.closest?.("[data-star-pick]")?.dataset?.starPick;
-  if (sp) {
-    setReviewRating(Number(sp));
-    return;
-  }
+  if (sp) { setReviewRating(Number(sp)); return; }
 
-    // Admin delete ONE review
+  // Admin delete ONE review
   const delBtn = e.target?.closest?.("[data-admin-review-del]");
   if (delBtn) {
     const pid = delBtn.dataset.adminReviewDel;
@@ -1332,52 +1322,29 @@ if (sw && sw.dataset.gcColor) {
     return;
   }
 
-
   // Pack type select (Step 1)
   const pt = e.target?.closest?.(".packTypeCard")?.dataset?.packtype;
-  if (pt) {
-    selectPackType(pt);
-    return;
-  }
+  if (pt) { selectPackType(pt); return; }
 
-  // Add single
+  // Add single (si tu l’utilises encore quelque part)
   const addId = e.target?.dataset?.add;
-  if (addId) {
-    addToCart(addId, 1);
-    return;
-  }
+  if (addId) { addToCart(addId, 1); return; }
 
   // Single qty
   const incId = e.target?.dataset?.inc;
-  if (incId) {
-    setCartQty(incId, (cart.skus[incId] || 0) + 1);
-    return;
-  }
+  if (incId) { setCartQty(incId, (cart.skus[incId] || 0) + 1); return; }
 
   const decId = e.target?.dataset?.dec;
-  if (decId) {
-    setCartQty(decId, (cart.skus[decId] || 0) - 1);
-    return;
-  }
+  if (decId) { setCartQty(decId, (cart.skus[decId] || 0) - 1); return; }
 
-  // Remove pack
+  // Remove pack — FIX: pas de restore stock (on ne décrémente plus le stock produit)
   const rmPack = e.target?.dataset?.packRemove;
   if (rmPack) {
-    // Restore stock
-    const pack = (cart.packs || []).find(p => p.id === rmPack);
-    if (pack) {
-      for (const it of (pack.items || [])) {
-        const prod = getProduct(it.id);
-        if (prod) prod.stock += it.qty;
-      }
-      saveProducts(products);
-      renderProducts();
-    }
-
     cart.packs = (cart.packs || []).filter(p => p.id !== rmPack);
     saveCart(cart);
     renderCartBadge();
     renderCart();
+    renderProducts(); // refresh grisage
     return;
   }
 
@@ -1391,11 +1358,10 @@ if (sw && sw.dataset.gcColor) {
     return;
   }
 
-  // Pack Builder controls (Step 2)
+  // Pack Builder controls (Step 2) — FIX stock temps réel
   const inc = e.target?.dataset?.packInc;
   const dec = e.target?.dataset?.packDec;
-  const addOne = e.target?.dataset?.packAddone;
-  const id = inc || dec || addOne;
+  const id = inc || dec;
 
   if (id) {
     const size = currentPackSize();
@@ -1404,13 +1370,16 @@ if (sw && sw.dataset.gcColor) {
     const p = getProduct(id);
     if (!p) return;
 
-    if (inc || addOne) {
+    if (inc) {
       if (units >= size) return;
-      if (current + 1 > p.stock) {
+
+      const left = availableStockForPackBuilder(id);
+      if (left <= 0) {
         if (els.packMsg) els.packMsg.textContent = "Stock insuffisant pour cette bougie.";
         setTimeout(() => { if (els.packMsg) els.packMsg.textContent = ""; }, 2000);
         return;
       }
+
       packSelection[id] = current + 1;
     } else if (dec) {
       const next = Math.max(0, current - 1);
@@ -1429,13 +1398,10 @@ if (sw && sw.dataset.gcColor) {
 els.pdpNotifyToggle?.addEventListener("change", () => {
   if (!currentPdpId) return;
   setNotified(currentPdpId, !!els.pdpNotifyToggle.checked);
-
-  // feedback petit
   if (typeof uiToast === "function") {
-    uiToast(els.pdpNotifyToggle.checked ? " ✅ Nous te préviendrons lorqu'on aura du stock" : "❌ Notification désactivé");
+    uiToast(els.pdpNotifyToggle.checked ? "✅ Nous te préviendrons lorsqu'on aura du stock" : "❌ Notification désactivée");
   }
 });
-
 
 // PDP close
 els.pdpClose?.addEventListener("click", closePdp);
@@ -1455,7 +1421,6 @@ els.pdpAddToCart?.addEventListener("click", () => {
     setTimeout(() => (els.pdpMsg.textContent = ""), 1200);
   }
 });
-
 
 if (els.cartBtn) els.cartBtn.addEventListener("click", openCart);
 if (els.cartClose) els.cartClose.addEventListener("click", closeCart);
@@ -1513,11 +1478,9 @@ if (els.adminLogin) {
     els.adminAuth?.classList.add("hidden");
     els.adminPanel?.classList.remove("hidden");
 
-    // ✅ AJOUT
     if (els.adminSelect?.value) renderAdminReviews(els.adminSelect.value);
   });
 }
-
 
 if (els.adminSelect) {
   els.adminSelect.addEventListener("change", () => {
@@ -1526,7 +1489,6 @@ if (els.adminSelect) {
     renderAdminReviews(els.adminSelect.value);
   });
 }
-
 
 if (els.adminSave) {
   els.adminSave.addEventListener("click", () => {
@@ -1542,14 +1504,12 @@ if (els.adminReviewsClear) {
   });
 }
 
-
 if (els.adminReset) {
   els.adminReset.addEventListener("click", () => {
     products = structuredClone(DEFAULT_PRODUCTS);
     cart = { skus: {}, packs: [], giftcards: [] };
     packSelection = {};
     chosenPackSize = null;
-
 
     saveProducts(products);
     saveCart(cart);
@@ -1564,7 +1524,6 @@ if (els.adminReset) {
       loadAdminFields(products[0].id);
     }
 
-    // Pack wizard back to step 1
     document.querySelectorAll(".packTypeCard").forEach(btn => btn.classList.remove("is-selected"));
     updatePackChosenUI();
     showPackStep(1);
@@ -1645,7 +1604,6 @@ if (els.reviewForm) {
       setTimeout(() => (els.reviewMsg.textContent = ""), 1800);
     }
 
-    // refresh UI (modal + product cards)
     renderReviewsList(currentReviewProductId);
     const { avg, count } = getAvgRating(currentReviewProductId);
     if (els.reviewsAvgStars) els.reviewsAvgStars.innerHTML = starsHTML(avg);
@@ -1713,7 +1671,6 @@ function deleteReview(productId, index) {
   renderProducts();
   renderAdminReviews(productId);
 
-  // si le modal est ouvert sur ce produit, refresh aussi
   if (currentReviewProductId === productId) {
     renderReviewsList(productId);
     const { avg, count } = getAvgRating(productId);
@@ -1743,7 +1700,6 @@ function clearAllReviews(productId) {
   adminReviewsToast("Tous les avis supprimés ✅");
 }
 
-
 /* ==========
   Init
 ========== */
@@ -1763,25 +1719,20 @@ function init() {
   }
 
   if (els.adminReviewsList && products[0]) {
-  renderAdminReviews(products[0].id);
-}
+    renderAdminReviews(products[0].id);
+  }
 
-
-
-  // Pack wizard init
   showPackStep(1);
   updatePackChosenUI();
 
-  // Gift card init
   updateCustomAmountUI();
   renderGiftCardPreview();
 
-  // Reviews stars UI init (if modal exists)
   if (els.reviewStars) {
-    // if you use hidden input, set default
     if (els.reviewRatingInput && !els.reviewRatingInput.value) els.reviewRatingInput.value = "5";
     renderReviewStarsUI(getReviewRating() || 5);
   }
 }
 
 init();
+
