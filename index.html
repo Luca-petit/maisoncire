@@ -20,6 +20,7 @@
     <nav class="nav" id="nav" aria-label="Navigation">
       <a href="#boutique">Boutique</a>
       <a href="#packs">Packs</a>
+      <a href="#giftcard">Carte cadeaux</a>
       <a href="#newsletter">Newsletter</a>
       <a href="#admin">Admin</a>
     </nav>
@@ -36,51 +37,37 @@
     </div>
   </header>
 
-  <!-- Floating Candle (simple animation) -->
-  <div class="floatingCandle" aria-hidden="true">
-    <svg class="floatingCandle__svg" viewBox="0 0 140 220" fill="none">
-      <ellipse cx="70" cy="206" rx="44" ry="10" class="cShadow"/>
-      <path d="M36 70c0-10 8-18 18-18h32c10 0 18 8 18 18v112c0 10-8 18-18 18H54c-10 0-18-8-18-18V70Z" class="cJar"/>
-      <path d="M42 74c0-7 6-13 13-13h30c7 0 13 6 13 13v104c0 7-6 13-13 13H55c-7 0-13-6-13-13V74Z" class="cWax"/>
-      <rect x="48" y="122" width="44" height="34" rx="10" class="cLabel"/>
-      <path d="M56 138h28" class="cLabelLine"/>
-      <path d="M56 146h22" class="cLabelLine2"/>
-      <rect x="68" y="58" width="4" height="18" rx="2" class="cWick"/>
-      <g class="cFlame">
-        <path d="M70 24c10 12 14 20 14 30 0 11-7 20-14 20s-14-9-14-20c0-10 4-18 14-30Z" class="cFlameOuter"/>
-        <path d="M70 34c6 7 8 12 8 18 0 7-4 12-8 12s-8-5-8-12c0-6 2-11 8-18Z" class="cFlameInner"/>
-      </g>
-      <path d="M48 78c0-6 5-11 11-11" class="cHighlight"/>
-      <path d="M48 92c0-6 5-11 11-11" class="cHighlight2"/>
-    </svg>
-  </div>
-
   <!-- Hero -->
   <main>
-    <section class="hero reveal">
-      <div class="heroInner">
-        <div class="hero__content">
-          <p class="kicker">Bougies artisanales · cire végétale · parfumées</p>
-          <h1>Un univers clair, doux, premium.</h1>
-          <p class="lead">
-            Des bougies pensées pour transformer une pièce en refuge.
-            Compose ton pack (3 ou 5) ou achète à l’unité.
-          </p>
-          <div class="hero__actions">
-            <a class="btn btn--primary" href="#boutique">Commandez maintenant</a>
-            <a class="btn btn--ghost" href="#packs">Construire un pack</a>
-          </div>
-        </div>
+   <section class="hero0" id="top">
+  <div class="hero0__bg" aria-hidden="true"></div>
 
-        <div class="heroVisual" aria-hidden="true">
-          <div class="heroCard">
-            <div class="pill">Packs personnalisables</div>
-            <div class="big">3 & 5</div>
-            <div class="small">Remise automatique sur les moins chères</div>
-          </div>
-        </div>
+  <div class="hero0__inner">
+    <div class="hero0__content reveal">
+      <span class="hero0__tag">Bougies artisanales · Cire végétale · Parfumées</span>
+
+      <h1 class="hero0__title">
+        L’ambiance qui
+        <span class="hero0__grad">réchauffe</span>
+        votre intérieur.
+      </h1>
+
+      <p class="hero0__lead">
+        Des bougies premium pensées pour transformer une pièce en refuge.
+        Achetez à l’unité ou composez votre pack (3 ou 5) avec remise automatique.
+      </p>
+
+      <div class="hero0__actions">
+        <a class="btn btn--primary" href="#boutique">Commandez maintenant</a>
+        <a class="btn btn--ghost" href="#packs">Construire un pack</a>
       </div>
-    </section>
+    </div>
+
+    <div class="hero0__visual" aria-hidden="true">
+      <img class="hero0__candles" src="./assets/candles.png" alt="" />
+    </div>
+  </div>
+</section>
 
     <!-- Boutique -->
     <section class="section reveal" id="boutique">
@@ -178,7 +165,6 @@
 
                   <p class="tiny muted" id="packPromoNote"></p>
 
-
                   <button class="btn btn--primary w100" id="addPackBtn" type="button" disabled>
                     Ajouter le pack au panier
                   </button>
@@ -191,6 +177,111 @@
 
       </div>
     </section>
+
+    <!-- Carte Cadeau -->
+<section class="section reveal" id="giftcard">
+  <div class="section__head">
+    <h2>Carte Cadeau</h2>
+    <p class="muted">Offrez une ambiance Maison Cire — personnalisation en direct.</p>
+  </div>
+
+  <div class="gift">
+    <!-- Preview -->
+    <div class="gift__previewWrap">
+      <div class="giftCard" id="giftCardPreview" data-color="violet">
+        <div class="giftCard__top">
+          <span class="giftCard__brand">Maison Cire</span>
+          <span class="giftCard__amount" id="gcPreviewAmount">50 €</span>
+        </div>
+
+        <div class="giftCard__title">Carte Cadeau</div>
+
+        <div class="giftCard__meta">
+          <div class="giftCard__row">
+            <span class="giftCard__label">Receveur</span>
+            <span class="giftCard__value" id="gcPreviewReceiver">receveur@email.com</span>
+          </div>
+          <div class="giftCard__row">
+            <span class="giftCard__label">Date d’envoi</span>
+            <span class="giftCard__value" id="gcPreviewDate">—</span>
+          </div>
+        </div>
+
+        <div class="giftCard__msg" id="gcPreviewMsg">Un petit mot… (optionnel)</div>
+        <div class="giftCard__foot">
+          <span class="giftCard__hint">Code envoyé par email à la date choisie</span>
+        </div>
+      </div>
+
+      <p class="tiny muted" style="margin-top:10px;">
+        Aperçu en temps réel — le code est généré côté backend (plus tard).
+      </p>
+    </div>
+
+    <!-- Form -->
+    <div class="gift__form">
+      <div class="gift__grid">
+        <label class="label">
+  Montant
+  <select id="gcAmount">
+    <option value="25">25 €</option>
+    <option value="50" selected>50 €</option>
+    <option value="75">75 €</option>
+    <option value="100">100 €</option>
+    <option value="custom">Autre montant</option>
+  </select>
+</label>
+
+<label class="label" id="gcCustomWrap" style="display:none;">
+  Montant personnalisé (€)
+  <input id="gcCustomAmount" type="number" min="5" step="1" placeholder="Ex: 60" />
+</label>
+
+
+        <div class="label">
+  Couleur
+  <input type="hidden" id="gcColor" value="violet" />
+
+  <div class="colorSwatches" role="radiogroup" aria-label="Choisir une couleur">
+    <button class="swatch is-selected" type="button" data-gc-color="violet" role="radio" aria-checked="true" aria-label="Violet"></button>
+    <button class="swatch" type="button" data-gc-color="sauge" role="radio" aria-checked="false" aria-label="Sauge"></button>
+    <button class="swatch" type="button" data-gc-color="ambre" role="radio" aria-checked="false" aria-label="Ambre"></button>
+    <button class="swatch" type="button" data-gc-color="noir" role="radio" aria-checked="false" aria-label="Noir"></button>
+  </div>
+</div>
+
+
+        <label class="label" style="grid-column: 1 / -1;">
+          Email du receveur
+          <input id="gcReceiverEmail" type="email" placeholder="receveur@email.com" autocomplete="email" required />
+        </label>
+
+        <label class="label">
+          Date d’envoi
+          <input id="gcSendDate" type="date" />
+        </label>
+
+        <label class="label">
+          Votre prénom (optionnel)
+          <input id="gcFromName" type="text" placeholder="Ex: Lina" />
+        </label>
+
+        <label class="label" style="grid-column: 1 / -1;">
+          Message (optionnel)
+          <textarea id="gcMessage" rows="3" placeholder="Écris un petit mot…"></textarea>
+        </label>
+      </div>
+
+      <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+        <button class="btn btn--primary" id="gcAddToCart" type="button">Ajouter la carte au panier</button>
+        <button class="btn btn--ghost" id="gcReset" type="button">Réinitialiser</button>
+      </div>
+
+      <p class="formMsg" id="gcMsg" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+</section>
+
 
     <!-- Newsletter -->
     <section class="section reveal" id="newsletter">
@@ -336,3 +427,4 @@
   </script>
 </body>
 </html>
+

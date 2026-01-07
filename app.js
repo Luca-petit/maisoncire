@@ -1,9 +1,8 @@
 /* =========================================================
    Maison Cire — app.js (FULL)
-   ✅ Includes: Boutique + Panier (singles + packs) + Admin + Newsletter
+   ✅ Includes: Boutique + Panier (singles + packs + giftcards) + Admin + Newsletter
    ✅ Includes: Pack Wizard (Step 1 choose pack, Step 2 compose, then add pack)
-   ⚠️ "Sans rien toucher au reste" = same features kept.
-   NOTE: This expects the updated #packs wizard HTML (packStep1/packStep2 + .packTypeCard)
+   ✅ NEW: Carte Cadeau (live preview + add to cart + remove in cart)
    ========================================================= */
 
 /* ==========
@@ -76,13 +75,17 @@ function saveProducts(products) {
 }
 
 /* ==========
-  Cart storage (singles + packs)
-  cart = { skus: { [id]: qty }, packs: [ {id, name, items, value, free, total} ] }
+  Cart storage (singles + packs + giftcards)
+  cart = {
+    skus: { [id]: qty },
+    packs: [ {id, name, items, value, free, total} ],
+    giftcards: [ {id, amount, color, receiver, sendDate, fromName, message} ]
+  }
 ========== */
 
 function loadCart() {
   const raw = localStorage.getItem(CART_KEY);
-  const fallback = { skus: {}, packs: [] };
+  const fallback = { skus: {}, packs: [], giftcards: [] };
   if (!raw) return fallback;
 
   try {
@@ -90,6 +93,7 @@ function loadCart() {
     if (!parsed || typeof parsed !== "object") return fallback;
     if (!parsed.skus || typeof parsed.skus !== "object") parsed.skus = {};
     if (!Array.isArray(parsed.packs)) parsed.packs = [];
+    if (!Array.isArray(parsed.giftcards)) parsed.giftcards = [];
     return parsed;
   } catch {
     return fallback;
@@ -150,7 +154,7 @@ function computePackTotals(packItems, packSize, products) {
 ========== */
 
 let products = loadProducts();
-let cart = loadCart();        // { skus: {}, packs: [] }
+let cart = loadCart();        // { skus: {}, packs: [], giftcards: [] }
 
 /* Pack selection state */
 let packSelection = {};       // { [id]: qty }
@@ -220,6 +224,26 @@ const els = {
   packHint: document.getElementById("packHint"),
   addPackBtn: document.getElementById("addPackBtn"),
   packMsg: document.getElementById("packMsg"),
+
+  // Gift Card
+  gcPreview: document.getElementById("giftCardPreview"),
+  gcPreviewAmount: document.getElementById("gcPreviewAmount"),
+  gcPreviewReceiver: document.getElementById("gcPreviewReceiver"),
+  gcPreviewDate: document.getElementById("gcPreviewDate"),
+  gcPreviewMsg: document.getElementById("gcPreviewMsg"),
+
+  gcAmount: document.getElementById("gcAmount"),
+  gcColor: document.getElementById("gcColor"),
+  gcReceiverEmail: document.getElementById("gcReceiverEmail"),
+  gcSendDate: document.getElementById("gcSendDate"),
+  gcFromName: document.getElementById("gcFromName"),
+  gcMessage: document.getElementById("gcMessage"),
+  gcAddToCart: document.getElementById("gcAddToCart"),
+  gcReset: document.getElementById("gcReset"),
+  gcMsg: document.getElementById("gcMsg"),
+  gcCustomWrap: document.getElementById("gcCustomWrap"),
+  gcCustomAmount: document.getElementById("gcCustomAmount"),
+
 };
 
 if (els.year) els.year.textContent = new Date().getFullYear();
@@ -235,7 +259,8 @@ function getProduct(id) {
 function totalCartCount() {
   const skusCount = Object.values(cart.skus).reduce((a, b) => a + b, 0);
   const packsCount = (cart.packs || []).length;
-  return skusCount + packsCount;
+  const giftCount = (cart.giftcards || []).length;
+  return skusCount + packsCount + giftCount;
 }
 
 function toast(msg) {
@@ -402,7 +427,7 @@ function setCartQty(productId, qty) {
 }
 
 function clearCart() {
-  cart = { skus: {}, packs: [] };
+  cart = { skus: {}, packs: [], giftcards: [] };
   saveCart(cart);
   renderCartBadge();
   renderCart();
@@ -426,7 +451,7 @@ function closeCart() {
 }
 
 /* ==========
-  Totals (singles + packs)
+  Totals (singles + packs + giftcards)
 ========== */
 
 function computeTotals() {
@@ -455,17 +480,30 @@ function computeTotals() {
     hintParts.push(`${pack.name} (offert ${formatEUR(pack.free || 0)})`);
   }
 
+  // Gift Cards (no promo)
+  for (const gc of (cart.giftcards || [])) {
+    subtotal += Number(gc.amount || 0);
+    hintParts.push(`Carte cadeau ${formatEUR(gc.amount || 0)}`);
+  }
+
   const total = Math.max(0, subtotal - discount);
   return { subtotal, discount, total, hint: hintParts.join(" · ") };
 }
 
 /* ==========
-  Render cart (singles + packs)
+  Render cart (singles + packs + giftcards)
 ========== */
 
 function renderCartBadge() {
   if (!els.cartCount) return;
   els.cartCount.textContent = totalCartCount();
+}
+
+function formatDateFR(yyyyMmDd) {
+  if (!yyyyMmDd) return "—";
+  const [y, m, d] = yyyyMmDd.split("-").map(Number);
+  if (!y || !m || !d) return "—";
+  return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
 }
 
 function renderCart() {
@@ -475,7 +513,8 @@ function renderCart() {
 
   const skuEntries = Object.entries(cart.skus);
   const packEntries = cart.packs || [];
-  const empty = skuEntries.length === 0 && packEntries.length === 0;
+  const giftEntries = cart.giftcards || [];
+  const empty = skuEntries.length === 0 && packEntries.length === 0 && giftEntries.length === 0;
 
   if (empty) {
     els.cartItems.innerHTML = `<p class="muted">Votre panier est vide.</p>`;
@@ -524,6 +563,30 @@ function renderCart() {
         </div>
         <div class="qty">
           <button data-pack-remove="${escapeHTML(pack.id)}" aria-label="Supprimer">🗑️</button>
+        </div>
+      `;
+      els.cartItems.appendChild(item);
+    }
+
+    // Gift Cards
+    for (const gc of giftEntries) {
+      const parts = [
+        `Receveur : ${gc.receiver || ""}`,
+        `Date d’envoi : ${gc.sendDate ? formatDateFR(gc.sendDate) : "—"}`,
+        gc.fromName ? `De : ${gc.fromName}` : null,
+        gc.message ? `Message : ${gc.message}` : null,
+      ].filter(Boolean);
+
+      const item = document.createElement("div");
+      item.className = "cartItem";
+      item.innerHTML = `
+        <div>
+          <h4>Carte cadeau — ${formatEUR(gc.amount || 0)}</h4>
+          <p>${escapeHTML(parts.join(" · "))}</p>
+          <p>Couleur : ${escapeHTML(gc.color || "violet")}</p>
+        </div>
+        <div class="qty">
+          <button data-gc-remove="${escapeHTML(gc.id)}" aria-label="Supprimer">🗑️</button>
         </div>
       `;
       els.cartItems.appendChild(item);
@@ -628,52 +691,26 @@ function renderPackPreview() {
       .join("");
   }
 
-  // ✅ LIVE pricing: always compute value from selected items
-  const valueNow = items.reduce((sum, it) => {
-    const p = getProduct(it.id);
-    return sum + (p ? p.price * it.qty : 0);
-  }, 0);
-
   const isComplete = units === size;
+  const totals = isComplete ? computePackTotals(items, size, products) : { value: 0, free: 0, total: 0 };
 
-  // Only apply offer when pack is complete
-  let freeNow = 0;
-  let totalNow = valueNow;
-
-  if (isComplete) {
-    const totals = computePackTotals(items, size, products);
-    freeNow = totals.free || 0;
-    totalNow = totals.total || 0;
-  }
-
-  if (els.packValue) els.packValue.textContent = formatEUR(valueNow);
-  if (els.packFree) els.packFree.textContent = `- ${formatEUR(freeNow)}`;
-  if (els.packTotal) els.packTotal.textContent = formatEUR(totalNow);
+  if (els.packValue) els.packValue.textContent = formatEUR(totals.value);
+  if (els.packFree) els.packFree.textContent = `- ${formatEUR(totals.free)}`;
+  if (els.packTotal) els.packTotal.textContent = formatEUR(totals.total);
 
   if (els.addPackBtn) els.addPackBtn.disabled = !isComplete;
 
   if (els.packHint) {
     if (!isComplete) {
       const remaining = Math.max(0, size - units);
-      els.packHint.textContent =
-        remaining === 0 ? "" : `Ajoute encore ${remaining} bougie(s) pour compléter le pack.`;
+      els.packHint.textContent = remaining === 0 ? "" : `Ajoute encore ${remaining} bougie(s) pour compléter le pack.`;
     } else {
-      els.packHint.textContent =
-        size === 3
-          ? "Offert : la bougie la moins chère du pack."
-          : "Offert : les 2 bougies les moins chères du pack.";
+      els.packHint.textContent = size === 3
+        ? "Offert : la bougie la moins chère du pack."
+        : "Offert : les 2 bougies les moins chères du pack.";
     }
   }
-
-  const promoNote = document.getElementById("packPromoNote");
-if (promoNote) {
-  promoNote.textContent = isComplete
-    ? "Promo appliquée ✅"
-    : "La promo s’applique quand le pack est complet.";
 }
-
-}
-
 
 function addPackToCart() {
   const size = currentPackSize();
@@ -731,6 +768,108 @@ function addPackToCart() {
     void els.cartBtn.offsetWidth;
     els.cartBtn.classList.add("bump");
   }
+}
+
+/* ==========
+  Gift Card (live preview + add to cart)
+========== */
+
+function getGiftCardAmount() {
+  const v = (els.gcAmount?.value || "50").trim();
+  if (v === "custom") {
+    const n = Number(els.gcCustomAmount?.value || 0);
+    return Number.isFinite(n) ? n : 0;
+  }
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function updateCustomAmountUI() {
+  const isCustom = (els.gcAmount?.value || "") === "custom";
+  if (els.gcCustomWrap) els.gcCustomWrap.style.display = isCustom ? "" : "none";
+  if (!isCustom && els.gcCustomAmount) els.gcCustomAmount.value = "";
+}
+
+
+function gcSetMsg(text) {
+  if (!els.gcMsg) return;
+  els.gcMsg.textContent = text;
+  clearTimeout(gcSetMsg._t);
+  gcSetMsg._t = setTimeout(() => (els.gcMsg.textContent = ""), 2600);
+}
+
+function renderGiftCardPreview() {
+  if (!els.gcPreview) return;
+
+  updateCustomAmountUI();
+  const amount = getGiftCardAmount() || 50;
+  const color = (els.gcColor?.value || "violet").trim();
+  const receiver = (els.gcReceiverEmail?.value || "receveur@email.com").trim();
+  const sendDate = formatDateFR(els.gcSendDate?.value || "");
+  const fromName = (els.gcFromName?.value || "").trim();
+  const msgRaw = (els.gcMessage?.value || "").trim();
+
+  const msg = msgRaw
+    ? (fromName ? `De ${fromName} — ${msgRaw}` : msgRaw)
+    : "Un petit mot… (optionnel)";
+
+  els.gcPreview.dataset.color = color;
+
+  if (els.gcPreviewAmount) els.gcPreviewAmount.textContent = `${amount} €`;
+  if (els.gcPreviewReceiver) els.gcPreviewReceiver.textContent = receiver || "receveur@email.com";
+  if (els.gcPreviewDate) els.gcPreviewDate.textContent = sendDate;
+  if (els.gcPreviewMsg) els.gcPreviewMsg.textContent = msg;
+}
+
+function addGiftCardToCart() {
+  updateCustomAmountUI();
+  const amount = getGiftCardAmount();
+  const color = (els.gcColor?.value || "violet").trim();
+  const receiver = (els.gcReceiverEmail?.value || "").trim().toLowerCase();
+  const sendDateRaw = (els.gcSendDate?.value || "").trim();
+  const fromName = (els.gcFromName?.value || "").trim();
+  const message = (els.gcMessage?.value || "").trim();
+
+  if (!amount || amount <= 0) return gcSetMsg("Montant invalide.");
+  if (!receiver || !receiver.includes("@")) return gcSetMsg("Email du receveur invalide.");
+
+  const item = {
+    id: `gc_${Date.now()}`,
+    amount: Math.round(amount * 100) / 100,
+    color,
+    receiver,
+    sendDate: sendDateRaw || "",
+    fromName,
+    message
+  };
+
+  if (!Array.isArray(cart.giftcards)) cart.giftcards = [];
+  cart.giftcards.push(item);
+
+  saveCart(cart);
+  renderCartBadge();
+  renderCart();
+
+  if (els.cartBtn) {
+    els.cartBtn.classList.remove("bump");
+    void els.cartBtn.offsetWidth;
+    els.cartBtn.classList.add("bump");
+  }
+
+  gcSetMsg("Carte cadeau ajoutée au panier ✅");
+}
+
+function resetGiftCardForm() {
+  if (els.gcAmount) els.gcAmount.value = "50";
+  if (els.gcColor) els.gcColor.value = "violet";
+  if (els.gcReceiverEmail) els.gcReceiverEmail.value = "";
+  if (els.gcSendDate) els.gcSendDate.value = "";
+  if (els.gcFromName) els.gcFromName.value = "";
+  if (els.gcMessage) els.gcMessage.value = "";
+  renderGiftCardPreview();
+  gcSetMsg("Réinitialisé.");
+
+
 }
 
 /* ==========
@@ -815,7 +954,24 @@ function saveNewsletterEmail(email) {
 ========== */
 
 document.addEventListener("click", (e) => {
-  // Pack type select (Step 1)
+
+  // 🎁 Gift card color swatches
+  const sw = e.target?.closest?.("[data-gc-color]");
+  if (sw) {
+    const color = sw.dataset.gcColor;
+    if (els.gcColor) els.gcColor.value = color;
+
+    document.querySelectorAll(".swatch").forEach(b => {
+      const isSel = b.dataset.gcColor === color;
+      b.classList.toggle("is-selected", isSel);
+      b.setAttribute("aria-checked", String(isSel));
+    });
+
+    renderGiftCardPreview();
+    return;
+  }
+
+// Pack type select (Step 1)
   const pt = e.target?.closest?.(".packTypeCard")?.dataset?.packtype;
   if (pt) {
     selectPackType(pt);
@@ -857,6 +1013,16 @@ document.addEventListener("click", (e) => {
     }
 
     cart.packs = (cart.packs || []).filter(p => p.id !== rmPack);
+    saveCart(cart);
+    renderCartBadge();
+    renderCart();
+    return;
+  }
+
+  // Remove gift card
+  const rmGc = e.target?.dataset?.gcRemove;
+  if (rmGc) {
+    cart.giftcards = (cart.giftcards || []).filter(x => x.id !== rmGc);
     saveCart(cart);
     renderCartBadge();
     renderCart();
@@ -977,7 +1143,7 @@ if (els.adminSave) {
 if (els.adminReset) {
   els.adminReset.addEventListener("click", () => {
     products = structuredClone(DEFAULT_PRODUCTS);
-    cart = { skus: {}, packs: [] };
+    cart = { skus: {}, packs: [], giftcards: [] };
     packSelection = {};
     chosenPackSize = null;
 
@@ -1031,6 +1197,34 @@ if (els.addPackBtn) {
   els.addPackBtn.addEventListener("click", addPackToCart);
 }
 
+/* Gift Card bindings */
+["input", "change"].forEach(evt => {
+  // ⚠️ on enlève gcAmount d’ici (on le gère à part juste après)
+  // els.gcAmount?.addEventListener(evt, renderGiftCardPreview);
+
+  els.gcColor?.addEventListener(evt, renderGiftCardPreview);
+  els.gcReceiverEmail?.addEventListener(evt, renderGiftCardPreview);
+  els.gcSendDate?.addEventListener(evt, renderGiftCardPreview);
+  els.gcFromName?.addEventListener(evt, renderGiftCardPreview);
+  els.gcMessage?.addEventListener(evt, renderGiftCardPreview);
+});
+
+/* ✅ Montant : on gère le "custom" proprement */
+els.gcAmount?.addEventListener("change", () => {
+  updateCustomAmountUI();
+  renderGiftCardPreview();
+  if ((els.gcAmount?.value || "") === "custom") {
+    els.gcCustomAmount?.focus();
+  }
+});
+
+/* ✅ Montant personnalisé : update en direct quand tu tapes */
+els.gcCustomAmount?.addEventListener("input", renderGiftCardPreview);
+
+if (els.gcAddToCart) els.gcAddToCart.addEventListener("click", addGiftCardToCart);
+if (els.gcReset) els.gcReset.addEventListener("click", resetGiftCardForm);
+
+
 /* ==========
   Init
 ========== */
@@ -1052,58 +1246,9 @@ function init() {
   // Pack wizard init
   showPackStep(1);
   updatePackChosenUI();
+
+  // Gift card init
+  renderGiftCardPreview();
 }
 
 init();
-
-// Smooth scroll + "glide" highlight when clicking anchors (ex: Commandez maintenant)
-(function smoothAnchorGlide(){
-  const prefersReduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  function glide(el){
-    if (!el) return;
-    el.classList.remove("glide-in");
-    // force reflow
-    void el.offsetWidth;
-    el.classList.add("glide-in");
-  }
-
-  document.addEventListener("click", (e) => {
-    const a = e.target.closest('a[href^="#"]');
-    if (!a) return;
-
-    const href = a.getAttribute("href");
-    if (!href || href === "#") return;
-
-    const target = document.querySelector(href);
-    if (!target) return;
-
-    e.preventDefault();
-
-    // keep URL hash
-    history.pushState(null, "", href);
-
-    if (prefersReduced) {
-      target.scrollIntoView({ block: "start" });
-      glide(target);
-      return;
-    }
-
-    // small offset for sticky header
-    const y = target.getBoundingClientRect().top + window.scrollY - 86;
-
-    window.scrollTo({ top: y, behavior: "smooth" });
-
-    // add glide after scroll starts (timing feels natural)
-    setTimeout(() => glide(target), 180);
-  });
-})();
-
-(function headerScrollState(){
-  const header = document.querySelector(".header");
-  if (!header) return;
-
-  window.addEventListener("scroll", () => {
-    header.classList.toggle("is-scrolled", window.scrollY > 6);
-  }, { passive: true });
-})();
