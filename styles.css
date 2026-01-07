@@ -1363,3 +1363,115 @@ main{ padding-bottom: 28px; }
   font-size: 14px;
   text-shadow: 0 6px 16px rgba(0,0,0,.25);
 }
+
+/* =========================
+   Reviews (stars + modal)
+========================= */
+
+.ratingRow{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top: 10px;
+}
+
+.stars{
+  display:inline-flex;
+  gap:3px;
+  line-height: 1;
+}
+
+.star{
+  width: 16px;
+  height: 16px;
+  display:inline-block;
+  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,.9), rgba(255,255,255,0) 55%),
+              linear-gradient(180deg, #fbbf24, #f59e0b);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  opacity: .35;
+}
+
+.star.is-on{ opacity: 1; }
+.star.is-half{
+  opacity: 1;
+  background:
+    linear-gradient(90deg, #f59e0b 50%, rgba(245,158,11,.18) 50%);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+.ratingMeta{
+  font-size: 12px;
+  color: rgba(18,19,26,.68);
+}
+
+/* Button "Avis" in card */
+.btnReview{
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(18,19,26,.12);
+  background: rgba(255,255,255,.72);
+}
+
+/* Modal */
+.modal{ position: fixed; inset: 0; display:none; z-index: 9999; }
+.modal.open{ display:block; }
+.modal__overlay{ position:absolute; inset:0; background: rgba(0,0,0,.45); }
+.modal__panel{
+  position:absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, 92vw);
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+  border-radius: 18px;
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(255,255,255,.6);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 30px 90px rgba(0,0,0,.22);
+}
+
+.modal__head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(18,19,26,.08);
+}
+
+.modal__body{ padding: 14px 16px 18px; }
+
+.reviewsSummary{
+  display:flex;
+  align-items:center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(18,19,26,.03);
+  border: 1px solid rgba(18,19,26,.08);
+}
+
+.reviewsList{ margin-top: 14px; display:flex; flex-direction:column; gap: 10px; }
+
+.reviewItem{
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.9);
+  border: 1px solid rgba(18,19,26,.08);
+}
+
+.reviewItem__top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+}
+
+.sep{
+  margin: 16px 0;
+  border: 0;
+  height: 1px;
+  background: rgba(18,19,26,.08);
+}
+
+.reviewForm__row{ display:flex; gap: 10px; flex-wrap: wrap; }

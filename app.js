@@ -2,7 +2,8 @@
    Maison Cire — app.js (FULL)
    ✅ Includes: Boutique + Panier (singles + packs + giftcards) + Admin + Newsletter
    ✅ Includes: Pack Wizard (Step 1 choose pack, Step 2 compose, then add pack)
-   ✅ NEW: Carte Cadeau (live preview + add to cart + remove in cart)
+   ✅ Includes: Carte Cadeau (live preview + add to cart + remove in cart)
+   ✅ NEW: Avis produits (moyenne + liste + ajout) + étoiles cliquables
    ========================================================= */
 
 /* ==========
@@ -12,6 +13,7 @@
 const STORAGE_KEY = "candle_shop_products_v2";
 const CART_KEY = "candle_shop_cart_v2";
 const NEWS_KEY = "candle_shop_newsletter_v1";
+const REVIEWS_KEY = "candle_shop_reviews_v1";
 
 /* ==========
   Default data
@@ -150,15 +152,117 @@ function computePackTotals(packItems, packSize, products) {
 }
 
 /* ==========
+  Reviews (localStorage demo)
+========== */
+
+function loadReviewsMap() {
+  const raw = localStorage.getItem(REVIEWS_KEY);
+  const fallback = {};
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === "object") ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveReviewsMap(map) {
+  localStorage.setItem(REVIEWS_KEY, JSON.stringify(map));
+}
+
+let reviewsMap = loadReviewsMap(); // { [productId]: [ {name,rating,text,ts} ] }
+
+function getReviews(productId) {
+  const list = reviewsMap[productId];
+  return Array.isArray(list) ? list : [];
+}
+
+function addReview(productId, review) {
+  if (!reviewsMap[productId]) reviewsMap[productId] = [];
+  reviewsMap[productId].unshift(review);
+  saveReviewsMap(reviewsMap);
+}
+
+function getAvgRating(productId) {
+  const list = getReviews(productId);
+  if (list.length === 0) return { avg: 0, count: 0 };
+  const sum = list.reduce((a, r) => a + (Number(r.rating) || 0), 0);
+  return { avg: sum / list.length, count: list.length };
+}
+
+function starsHTML(value) {
+  const v = Math.max(0, Math.min(5, Number(value) || 0));
+  const full = Math.floor(v);
+  const half = (v - full) >= 0.5 ? 1 : 0;
+  const empty = 5 - full - half;
+
+  const mk = (cls) => `<span class="star ${cls}"></span>`;
+  return `<div class="stars" aria-label="Note ${v.toFixed(1)} sur 5">
+    ${Array.from({ length: full }).map(() => mk("is-on")).join("")}
+    ${half ? mk("is-half") : ""}
+    ${Array.from({ length: empty }).map(() => mk("")).join("")}
+  </div>`;
+}
+
+/* ==========
+  Clickable stars input (modal)
+  - Works with:
+    A) <div id="reviewStars"></div> + <input type="hidden" id="reviewRating" value="5">
+    B) fallback: <select id="reviewRating"> (old)
+========== */
+
+function setReviewRating(rating) {
+  const r = Math.max(1, Math.min(5, Number(rating) || 5));
+
+  // hidden input OR select (compat)
+  if (els.reviewRatingInput) els.reviewRatingInput.value = String(r);
+  if (els.reviewRatingSelect) els.reviewRatingSelect.value = String(r);
+
+  renderReviewStarsUI(r);
+}
+
+function getReviewRating() {
+  // Prefer hidden input
+  const v1 = els.reviewRatingInput?.value;
+  const v2 = els.reviewRatingSelect?.value;
+  const n = Number(v1 || v2 || 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function renderReviewStarsUI(current) {
+  if (!els.reviewStars) return;
+
+  const c = Math.max(1, Math.min(5, Number(current) || 5));
+  const btn = (i) => `
+    <button type="button"
+            class="starPick ${i <= c ? "is-on" : ""}"
+            data-star-pick="${i}"
+            aria-label="${i} étoile${i > 1 ? "s" : ""}"
+            aria-pressed="${i <= c ? "true" : "false"}"></button>
+  `;
+
+  els.reviewStars.innerHTML = `
+    <div class="starPickRow" role="radiogroup" aria-label="Choisir une note">
+      ${[1, 2, 3, 4, 5].map(btn).join("")}
+    </div>
+    <div class="tiny muted" style="margin-top:8px;">Note : <strong>${c}</strong> / 5</div>
+  `;
+}
+
+/* ==========
   Global state
 ========== */
 
 let products = loadProducts();
-let cart = loadCart();        // { skus: {}, packs: [], giftcards: [] }
+let cart = loadCart(); // { skus: {}, packs: [], giftcards: [] }
 
 /* Pack selection state */
-let packSelection = {};       // { [id]: qty }
-let chosenPackSize = null;    // 3 or 5 (wizard step 1)
+let packSelection = {};
+let chosenPackSize = null;
+
+/* Reviews modal state */
+let currentReviewProductId = null;
 
 /* ==========
   DOM
@@ -241,8 +345,37 @@ const els = {
   gcAddToCart: document.getElementById("gcAddToCart"),
   gcReset: document.getElementById("gcReset"),
   gcMsg: document.getElementById("gcMsg"),
+
+  // If you added custom amount UI (optional)
   gcCustomWrap: document.getElementById("gcCustomWrap"),
   gcCustomAmount: document.getElementById("gcCustomAmount"),
+
+  // Reviews Modal
+  reviewsModal: document.getElementById("reviewsModal"),
+  reviewsTitle: document.getElementById("reviewsTitle"),
+  reviewsAvgStars: document.getElementById("reviewsAvgStars"),
+  reviewsAvgText: document.getElementById("reviewsAvgText"),
+  reviewsCount: document.getElementById("reviewsCount"),
+  reviewsList: document.getElementById("reviewsList"),
+
+  reviewForm: document.getElementById("reviewForm"),
+  reviewName: document.getElementById("reviewName"),
+
+  // Clickable stars UI (new)
+  reviewStars: document.getElementById("reviewStars"),          // <div id="reviewStars"></div>
+  reviewRatingInput: document.getElementById("reviewRating"),   // <input type="hidden" id="reviewRating" value="5">
+  // Fallback select (old)
+  reviewRatingSelect: document.getElementById("reviewRatingSelect"), // if you keep a <select id="reviewRatingSelect">
+
+  reviewText: document.getElementById("reviewText"),
+  reviewMsg: document.getElementById("reviewMsg"),
+
+    // Admin reviews
+  adminReviewsCount: document.getElementById("adminReviewsCount"),
+  adminReviewsAvg: document.getElementById("adminReviewsAvg"),
+  adminReviewsList: document.getElementById("adminReviewsList"),
+  adminReviewsClear: document.getElementById("adminReviewsClear"),
+  adminReviewsMsg: document.getElementById("adminReviewsMsg"),
 
 };
 
@@ -322,7 +455,7 @@ function selectPackType(size) {
 }
 
 /* ==========
-  Render products (with images)
+  Render products (with images + ratings)
 ========== */
 
 function renderProducts() {
@@ -334,6 +467,9 @@ function renderProducts() {
     const inStock = p.stock > 0;
     const badge = inStock ? `${p.stock} en stock` : "Rupture";
     const btnLabel = inStock ? "Ajouter" : "Indisponible";
+
+    const r = getAvgRating(p.id);
+    const avgTxt = r.avg ? r.avg.toFixed(1).replace(".", ",") : "0,0";
 
     const card = document.createElement("article");
     card.className = "card";
@@ -353,6 +489,12 @@ function renderProducts() {
         <div>
           <h3>${escapeHTML(p.name)}</h3>
           <p>${escapeHTML(p.desc)}</p>
+
+          <div class="ratingRow">
+            ${starsHTML(r.avg)}
+            <span class="ratingMeta">${avgTxt} · ${r.count} avis</span>
+            <button class="btnReview" type="button" data-review-open="${p.id}">Avis</button>
+          </div>
         </div>
 
         <div class="productFooter">
@@ -691,8 +833,21 @@ function renderPackPreview() {
       .join("");
   }
 
+  // ✅ LIVE totals même si pack incomplet
+  // Valeur = somme actuelle
+  let liveValue = 0;
+  for (const it of items) {
+    const p = getProduct(it.id);
+    if (!p) continue;
+    liveValue += p.price * it.qty;
+  }
+
   const isComplete = units === size;
-  const totals = isComplete ? computePackTotals(items, size, products) : { value: 0, free: 0, total: 0 };
+
+  // Promo appliquée uniquement si complet
+  const totals = isComplete
+    ? computePackTotals(items, size, products)
+    : { value: liveValue, free: 0, total: liveValue };
 
   if (els.packValue) els.packValue.textContent = formatEUR(totals.value);
   if (els.packFree) els.packFree.textContent = `- ${formatEUR(totals.free)}`;
@@ -703,7 +858,9 @@ function renderPackPreview() {
   if (els.packHint) {
     if (!isComplete) {
       const remaining = Math.max(0, size - units);
-      els.packHint.textContent = remaining === 0 ? "" : `Ajoute encore ${remaining} bougie(s) pour compléter le pack.`;
+      els.packHint.textContent = remaining === 0
+        ? ""
+        : `Ajoute encore ${remaining} bougie(s) pour compléter le pack. (Prix en cours: ${formatEUR(liveValue)})`;
     } else {
       els.packHint.textContent = size === 3
         ? "Offert : la bougie la moins chère du pack."
@@ -711,6 +868,7 @@ function renderPackPreview() {
     }
   }
 }
+
 
 function addPackToCart() {
   const size = currentPackSize();
@@ -774,6 +932,13 @@ function addPackToCart() {
   Gift Card (live preview + add to cart)
 ========== */
 
+function gcSetMsg(text) {
+  if (!els.gcMsg) return;
+  els.gcMsg.textContent = text;
+  clearTimeout(gcSetMsg._t);
+  gcSetMsg._t = setTimeout(() => (els.gcMsg.textContent = ""), 2600);
+}
+
 function getGiftCardAmount() {
   const v = (els.gcAmount?.value || "50").trim();
   if (v === "custom") {
@@ -790,20 +955,15 @@ function updateCustomAmountUI() {
   if (!isCustom && els.gcCustomAmount) els.gcCustomAmount.value = "";
 }
 
-
-function gcSetMsg(text) {
-  if (!els.gcMsg) return;
-  els.gcMsg.textContent = text;
-  clearTimeout(gcSetMsg._t);
-  gcSetMsg._t = setTimeout(() => (els.gcMsg.textContent = ""), 2600);
-}
-
 function renderGiftCardPreview() {
   if (!els.gcPreview) return;
 
   updateCustomAmountUI();
   const amount = getGiftCardAmount() || 50;
+
   const color = (els.gcColor?.value || "violet").trim();
+els.gcPreview.dataset.color = color;
+
   const receiver = (els.gcReceiverEmail?.value || "receveur@email.com").trim();
   const sendDate = formatDateFR(els.gcSendDate?.value || "");
   const fromName = (els.gcFromName?.value || "").trim();
@@ -815,7 +975,7 @@ function renderGiftCardPreview() {
 
   els.gcPreview.dataset.color = color;
 
-  if (els.gcPreviewAmount) els.gcPreviewAmount.textContent = `${amount} €`;
+  if (els.gcPreviewAmount) els.gcPreviewAmount.textContent = `${Math.round(amount)} €`;
   if (els.gcPreviewReceiver) els.gcPreviewReceiver.textContent = receiver || "receveur@email.com";
   if (els.gcPreviewDate) els.gcPreviewDate.textContent = sendDate;
   if (els.gcPreviewMsg) els.gcPreviewMsg.textContent = msg;
@@ -824,6 +984,7 @@ function renderGiftCardPreview() {
 function addGiftCardToCart() {
   updateCustomAmountUI();
   const amount = getGiftCardAmount();
+
   const color = (els.gcColor?.value || "violet").trim();
   const receiver = (els.gcReceiverEmail?.value || "").trim().toLowerCase();
   const sendDateRaw = (els.gcSendDate?.value || "").trim();
@@ -866,10 +1027,69 @@ function resetGiftCardForm() {
   if (els.gcSendDate) els.gcSendDate.value = "";
   if (els.gcFromName) els.gcFromName.value = "";
   if (els.gcMessage) els.gcMessage.value = "";
+  if (els.gcCustomAmount) els.gcCustomAmount.value = "";
+  updateCustomAmountUI();
   renderGiftCardPreview();
   gcSetMsg("Réinitialisé.");
+}
 
+/* ==========
+  Reviews modal
+========== */
 
+function openReviews(productId) {
+  const p = getProduct(productId);
+  if (!p || !els.reviewsModal) return;
+
+  currentReviewProductId = productId;
+
+  if (els.reviewsTitle) els.reviewsTitle.textContent = `Avis — ${p.name}`;
+
+  const { avg, count } = getAvgRating(productId);
+  if (els.reviewsAvgStars) els.reviewsAvgStars.innerHTML = starsHTML(avg);
+  if (els.reviewsAvgText) els.reviewsAvgText.textContent = (avg || 0).toFixed(1).replace(".", ",");
+  if (els.reviewsCount) els.reviewsCount.textContent = String(count);
+
+  renderReviewsList(productId);
+
+  // init stars input default = 5
+  if (els.reviewRatingInput && !els.reviewRatingInput.value) els.reviewRatingInput.value = "5";
+  renderReviewStarsUI(getReviewRating() || 5);
+
+  els.reviewsModal.classList.add("open");
+  els.reviewsModal.setAttribute("aria-hidden", "false");
+}
+
+function closeReviews() {
+  if (!els.reviewsModal) return;
+  els.reviewsModal.classList.remove("open");
+  els.reviewsModal.setAttribute("aria-hidden", "true");
+  currentReviewProductId = null;
+  if (els.reviewMsg) els.reviewMsg.textContent = "";
+}
+
+function renderReviewsList(productId) {
+  if (!els.reviewsList) return;
+  const list = getReviews(productId);
+
+  if (list.length === 0) {
+    els.reviewsList.innerHTML = `<p class="muted">Aucun avis pour le moment. Soyez le premier ⭐</p>`;
+    return;
+  }
+
+  els.reviewsList.innerHTML = list.map(r => {
+    const date = new Date(r.ts || Date.now()).toLocaleDateString("fr-FR");
+    return `
+      <div class="reviewItem">
+        <div class="reviewItem__top">
+          <strong>${escapeHTML(r.name || "Client")}</strong>
+          ${starsHTML(Number(r.rating) || 0)}
+        </div>
+        <p class="tiny muted" style="margin:6px 0 0;">${date}</p>
+        ${r.text ? `<p style="margin:10px 0 0;">${escapeHTML(r.text)}</p>` : ""}
+      </div>
+    `;
+  }).join("");
 }
 
 /* ==========
@@ -955,23 +1175,51 @@ function saveNewsletterEmail(email) {
 
 document.addEventListener("click", (e) => {
 
-  // 🎁 Gift card color swatches
-  const sw = e.target?.closest?.("[data-gc-color]");
-  if (sw) {
-    const color = sw.dataset.gcColor;
-    if (els.gcColor) els.gcColor.value = color;
+  // Gift Card: palette couleurs (swatches)
+const sw = e.target?.closest?.(".colorSwatches .swatch");
+if (sw && sw.dataset.gcColor) {
+  const color = sw.dataset.gcColor;
 
-    document.querySelectorAll(".swatch").forEach(b => {
-      const isSel = b.dataset.gcColor === color;
-      b.classList.toggle("is-selected", isSel);
-      b.setAttribute("aria-checked", String(isSel));
-    });
+  // 1) stocke la couleur dans l'input hidden (source de vérité)
+  if (els.gcColor) els.gcColor.value = color;
 
-    renderGiftCardPreview();
+  // 2) UI active state + aria
+  document.querySelectorAll(".colorSwatches .swatch").forEach(b => {
+    const isOn = b === sw;
+    b.classList.toggle("is-selected", isOn);
+    b.setAttribute("aria-checked", isOn ? "true" : "false");
+  });
+
+  // 3) refresh preview
+  renderGiftCardPreview();
+  return;
+}
+
+  // Reviews: open modal
+  const ro = e.target?.dataset?.reviewOpen;
+  if (ro) { openReviews(ro); return; }
+
+  // Reviews: close modal
+  if (e.target?.closest?.("[data-reviews-close]")) { closeReviews(); return; }
+
+  // Reviews: clickable stars in modal
+  const sp = e.target?.closest?.("[data-star-pick]")?.dataset?.starPick;
+  if (sp) {
+    setReviewRating(Number(sp));
     return;
   }
 
-// Pack type select (Step 1)
+    // Admin delete ONE review
+  const delBtn = e.target?.closest?.("[data-admin-review-del]");
+  if (delBtn) {
+    const pid = delBtn.dataset.adminReviewDel;
+    const idx = delBtn.dataset.adminReviewIdx;
+    deleteReview(pid, idx);
+    return;
+  }
+
+
+  // Pack type select (Step 1)
   const pt = e.target?.closest?.(".packTypeCard")?.dataset?.packtype;
   if (pt) {
     selectPackType(pt);
@@ -1115,23 +1363,25 @@ if (els.newsletterForm) {
 if (els.adminLogin) {
   els.adminLogin.addEventListener("click", () => {
     const code = (els.adminCode?.value || "").trim();
-    if (code !== ADMIN_CODE_DEMO) {
-      if (els.adminMsg) els.adminMsg.textContent = "Code invalide.";
-      setTimeout(() => { if (els.adminMsg) els.adminMsg.textContent = ""; }, 2000);
-      return;
-    }
-    if (els.adminAuth) els.adminAuth.classList.add("hidden");
-    if (els.adminPanel) els.adminPanel.classList.remove("hidden");
-    if (els.adminMsg) els.adminMsg.textContent = "";
+    if (code !== ADMIN_CODE_DEMO) return;
+
+    els.adminAuth?.classList.add("hidden");
+    els.adminPanel?.classList.remove("hidden");
+
+    // ✅ AJOUT
+    if (els.adminSelect?.value) renderAdminReviews(els.adminSelect.value);
   });
 }
+
 
 if (els.adminSelect) {
   els.adminSelect.addEventListener("change", () => {
     loadAdminFields(els.adminSelect.value);
     if (els.adminSaveMsg) els.adminSaveMsg.textContent = "";
+    renderAdminReviews(els.adminSelect.value);
   });
 }
+
 
 if (els.adminSave) {
   els.adminSave.addEventListener("click", () => {
@@ -1140,12 +1390,21 @@ if (els.adminSave) {
   });
 }
 
+if (els.adminReviewsClear) {
+  els.adminReviewsClear.addEventListener("click", () => {
+    if (!els.adminSelect) return;
+    clearAllReviews(els.adminSelect.value);
+  });
+}
+
+
 if (els.adminReset) {
   els.adminReset.addEventListener("click", () => {
     products = structuredClone(DEFAULT_PRODUCTS);
     cart = { skus: {}, packs: [], giftcards: [] };
     packSelection = {};
     chosenPackSize = null;
+
 
     saveProducts(products);
     saveCart(cart);
@@ -1199,9 +1458,6 @@ if (els.addPackBtn) {
 
 /* Gift Card bindings */
 ["input", "change"].forEach(evt => {
-  // ⚠️ on enlève gcAmount d’ici (on le gère à part juste après)
-  // els.gcAmount?.addEventListener(evt, renderGiftCardPreview);
-
   els.gcColor?.addEventListener(evt, renderGiftCardPreview);
   els.gcReceiverEmail?.addEventListener(evt, renderGiftCardPreview);
   els.gcSendDate?.addEventListener(evt, renderGiftCardPreview);
@@ -1209,20 +1465,138 @@ if (els.addPackBtn) {
   els.gcMessage?.addEventListener(evt, renderGiftCardPreview);
 });
 
-/* ✅ Montant : on gère le "custom" proprement */
 els.gcAmount?.addEventListener("change", () => {
   updateCustomAmountUI();
   renderGiftCardPreview();
-  if ((els.gcAmount?.value || "") === "custom") {
-    els.gcCustomAmount?.focus();
-  }
+  if ((els.gcAmount?.value || "") === "custom") els.gcCustomAmount?.focus();
 });
 
-/* ✅ Montant personnalisé : update en direct quand tu tapes */
 els.gcCustomAmount?.addEventListener("input", renderGiftCardPreview);
 
 if (els.gcAddToCart) els.gcAddToCart.addEventListener("click", addGiftCardToCart);
 if (els.gcReset) els.gcReset.addEventListener("click", resetGiftCardForm);
+
+/* Reviews form submit */
+if (els.reviewForm) {
+  els.reviewForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!currentReviewProductId) return;
+
+    const name = (els.reviewName?.value || "").trim();
+    const rating = getReviewRating();
+    const text = (els.reviewText?.value || "").trim();
+
+    if (!name) { if (els.reviewMsg) els.reviewMsg.textContent = "Nom requis."; return; }
+    if (!rating || rating < 1 || rating > 5) { if (els.reviewMsg) els.reviewMsg.textContent = "Note invalide."; return; }
+
+    addReview(currentReviewProductId, { name, rating, text, ts: Date.now() });
+
+    if (els.reviewName) els.reviewName.value = "";
+    if (els.reviewText) els.reviewText.value = "";
+    setReviewRating(5);
+
+    if (els.reviewMsg) {
+      els.reviewMsg.textContent = "Avis publié ✅";
+      setTimeout(() => (els.reviewMsg.textContent = ""), 1800);
+    }
+
+    // refresh UI (modal + product cards)
+    renderReviewsList(currentReviewProductId);
+    const { avg, count } = getAvgRating(currentReviewProductId);
+    if (els.reviewsAvgStars) els.reviewsAvgStars.innerHTML = starsHTML(avg);
+    if (els.reviewsAvgText) els.reviewsAvgText.textContent = (avg || 0).toFixed(1).replace(".", ",");
+    if (els.reviewsCount) els.reviewsCount.textContent = String(count);
+
+    renderProducts();
+  });
+}
+
+/* ==========
+  Admin Reviews (delete)
+========== */
+
+function adminReviewsToast(text) {
+  if (!els.adminReviewsMsg) return;
+  els.adminReviewsMsg.textContent = text;
+  clearTimeout(adminReviewsToast._t);
+  adminReviewsToast._t = setTimeout(() => (els.adminReviewsMsg.textContent = ""), 2400);
+}
+
+function renderAdminReviews(productId) {
+  if (!els.adminReviewsList) return;
+
+  const list = getReviews(productId);
+  const { avg, count } = getAvgRating(productId);
+
+  if (els.adminReviewsCount) els.adminReviewsCount.textContent = String(count);
+  if (els.adminReviewsAvg) els.adminReviewsAvg.textContent = (avg || 0).toFixed(1).replace(".", ",");
+
+  if (count === 0) {
+    els.adminReviewsList.innerHTML = `<p class="muted">Aucun avis pour ce produit.</p>`;
+    return;
+  }
+
+  els.adminReviewsList.innerHTML = list.map((r, idx) => {
+    const date = new Date(r.ts || Date.now()).toLocaleDateString("fr-FR");
+    return `
+      <div class="reviewItem" style="margin-bottom:10px;">
+        <div class="reviewItem__top">
+          <strong>${escapeHTML(r.name || "Client")}</strong>
+          ${starsHTML(Number(r.rating) || 0)}
+        </div>
+        <p class="tiny muted" style="margin:6px 0 0;">${date}</p>
+        ${r.text ? `<p style="margin:10px 0 0;">${escapeHTML(r.text)}</p>` : ""}
+        <div style="margin-top:10px; display:flex; justify-content:flex-end;">
+          <button class="btn btn--ghost" type="button" data-admin-review-del="${escapeHTML(productId)}" data-admin-review-idx="${idx}">
+            🗑️ Supprimer
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function deleteReview(productId, index) {
+  const list = getReviews(productId);
+  const idx = Number(index);
+  if (!Number.isFinite(idx) || idx < 0 || idx >= list.length) return;
+
+  list.splice(idx, 1);
+  reviewsMap[productId] = list;
+  saveReviewsMap(reviewsMap);
+
+  renderProducts();
+  renderAdminReviews(productId);
+
+  // si le modal est ouvert sur ce produit, refresh aussi
+  if (currentReviewProductId === productId) {
+    renderReviewsList(productId);
+    const { avg, count } = getAvgRating(productId);
+    if (els.reviewsAvgStars) els.reviewsAvgStars.innerHTML = starsHTML(avg);
+    if (els.reviewsAvgText) els.reviewsAvgText.textContent = (avg || 0).toFixed(1).replace(".", ",");
+    if (els.reviewsCount) els.reviewsCount.textContent = String(count);
+  }
+
+  adminReviewsToast("Avis supprimé ✅");
+}
+
+function clearAllReviews(productId) {
+  reviewsMap[productId] = [];
+  saveReviewsMap(reviewsMap);
+
+  renderProducts();
+  renderAdminReviews(productId);
+
+  if (currentReviewProductId === productId) {
+    renderReviewsList(productId);
+    const { avg, count } = getAvgRating(productId);
+    if (els.reviewsAvgStars) els.reviewsAvgStars.innerHTML = starsHTML(avg);
+    if (els.reviewsAvgText) els.reviewsAvgText.textContent = (avg || 0).toFixed(1).replace(".", ",");
+    if (els.reviewsCount) els.reviewsCount.textContent = String(count);
+  }
+
+  adminReviewsToast("Tous les avis supprimés ✅");
+}
 
 
 /* ==========
@@ -1243,12 +1617,26 @@ function init() {
     loadAdminFields(products[0].id);
   }
 
+  if (els.adminReviewsList && products[0]) {
+  renderAdminReviews(products[0].id);
+}
+
+
+
   // Pack wizard init
   showPackStep(1);
   updatePackChosenUI();
 
   // Gift card init
+  updateCustomAmountUI();
   renderGiftCardPreview();
+
+  // Reviews stars UI init (if modal exists)
+  if (els.reviewStars) {
+    // if you use hidden input, set default
+    if (els.reviewRatingInput && !els.reviewRatingInput.value) els.reviewRatingInput.value = "5";
+    renderReviewStarsUI(getReviewRating() || 5);
+  }
 }
 
 init();

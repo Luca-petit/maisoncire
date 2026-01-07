@@ -347,6 +347,22 @@
             </label>
           </div>
 
+          <!-- Admin Reviews -->
+          <div class="adminReviews" style="margin-top:18px;">
+            <h3 style="margin:0 0 10px;">Avis du produit</h3>
+
+            <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <p class="muted" style="margin:0;">
+                Total : <strong id="adminReviewsCount">0</strong> · Moyenne : <strong id="adminReviewsAvg">0,0</strong>/5
+              </p>
+              <button class="btn btn--ghost" id="adminReviewsClear" type="button">Supprimer tous les avis</button>
+            </div>
+
+            <div id="adminReviewsList" style="margin-top:12px;"></div>
+            <p class="formMsg" id="adminReviewsMsg" role="status" aria-live="polite"></p>
+          </div>
+
+
           <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
             <button class="btn btn--primary" id="adminSave" type="button">Sauvegarder</button>
             <p class="formMsg" id="adminSaveMsg" role="status" aria-live="polite"></p>
@@ -405,6 +421,62 @@
       </div>
     </div>
   </footer>
+
+
+  <!-- Reviews Modal -->
+<div class="modal" id="reviewsModal" aria-hidden="true">
+  <div class="modal__overlay" data-reviews-close></div>
+
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-label="Avis produit">
+    <div class="modal__head">
+      <strong id="reviewsTitle">Avis</strong>
+      <button class="iconBtn" type="button" data-reviews-close aria-label="Fermer">✕</button>
+    </div>
+
+    <div class="modal__body">
+      <div class="reviewsSummary">
+        <div class="stars" id="reviewsAvgStars"></div>
+        <div class="reviewsSummary__text">
+          <div><strong id="reviewsAvgText">0,0</strong> / 5</div>
+          <div class="muted tiny"><span id="reviewsCount">0</span> avis</div>
+        </div>
+      </div>
+
+      <div class="reviewsList" id="reviewsList"></div>
+
+      <hr class="sep"/>
+
+      <form id="reviewForm" class="reviewForm">
+        <div class="reviewForm__row">
+          <label class="label" style="flex:1;">
+            Votre prénom
+            <input id="reviewName" type="text" placeholder="Ex: Lina" required />
+          </label>
+
+          <label class="label" style="min-width:160px;">
+            Note
+            <select id="reviewRating" required>
+              <option value="5">5 ⭐</option>
+              <option value="4">4 ⭐</option>
+              <option value="3">3 ⭐</option>
+              <option value="2">2 ⭐</option>
+              <option value="1">1 ⭐</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="label">
+          Commentaire (optionnel)
+          <textarea id="reviewText" rows="3" placeholder="Votre retour…"></textarea>
+        </label>
+
+        <button class="btn btn--primary" type="submit">Publier l’avis</button>
+        <p class="formMsg" id="reviewMsg" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </div>
+</div>
+
 
   <!-- Reveal on scroll (optional, keeps your site smooth) -->
   <script>
