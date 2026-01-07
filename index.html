@@ -475,6 +475,64 @@
   </div>
 </div>
 
+<!-- Product Modal (PDP) -->
+<div class="pdpModal" id="pdpModal" aria-hidden="true">
+  <div class="pdpModal__overlay" id="pdpOverlay" aria-hidden="true"></div>
+
+  <aside class="pdpModal__panel" role="dialog" aria-modal="true" aria-label="Fiche produit">
+    <div class="pdpModal__head">
+      <strong id="pdpTitle">Produit</strong>
+      <button class="iconBtn" id="pdpClose" aria-label="Fermer">✕</button>
+    </div>
+
+    <div class="pdpModal__body">
+      <div class="pdpGrid">
+        <!-- LEFT -->
+        <div class="pdpMedia">
+          <img id="pdpImg" src="" alt="" />
+        </div>
+
+        <!-- RIGHT -->
+        <div class="pdpInfo">
+          <div class="pdpTop">
+            <div class="pdpPrice" id="pdpPrice">0,00 €</div>
+            <div class="pdpStock muted" id="pdpStock"></div>
+          </div>
+
+          <div class="pdpRating">
+            <div id="pdpStars"></div>
+            <span class="pdpMeta" id="pdpRatingMeta">0,0 · 0 avis</span>
+          </div>
+
+          <p class="pdpDesc" id="pdpDesc"></p>
+
+          <button class="btn btn--primary w100" id="pdpAddToCart" type="button">
+            Ajouter au panier
+          </button>
+
+          <!-- Notify switch (only when out of stock) -->
+<div class="notifyRow" id="pdpNotifyRow" style="display:none;">
+  <div class="notifyRow__left">
+    <strong>Me prévenir quand dispo</strong>
+    <span class="muted tiny">Notification (démo, stock local)</span>
+  </div>
+
+  <label class="switch" aria-label="Me prévenir quand dispo">
+    <input type="checkbox" id="pdpNotifyToggle" />
+    <span class="switch__track" aria-hidden="true"></span>
+  </label>
+</div>
+
+
+          <p class="formMsg" id="pdpMsg" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="toast" id="toast" aria-live="polite"></div>
+
 
   <!-- Reveal on scroll (optional, keeps your site smooth) -->
   <script>

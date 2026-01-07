@@ -1547,3 +1547,368 @@ a[href^="mailto"] { color: inherit !important; }
 :focus { outline: none; }
 :focus-visible { outline: 3px solid rgba(109,94,252,.35); outline-offset: 3px; }
 
+/* =========================
+   PDP MODAL (fiche produit)
+========================= */
+
+.pdpModal{
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+.pdpModal.open{ pointer-events: auto; }
+
+.pdpModal__overlay{
+  position: absolute;
+  inset: 0;
+  background: rgba(10,12,18,.38);
+  opacity: 0;
+  transition: opacity .22s ease;
+}
+.pdpModal.open .pdpModal__overlay{ opacity: 1; }
+
+.pdpModal__panel{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(1040px, calc(100vw - 36px));
+  height: min(720px, calc(100vh - 36px));
+  transform: translate(-50%, -48%) scale(.98);
+  opacity: 0;
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(18,19,26,.12);
+  border-radius: 22px;
+  box-shadow: 0 30px 90px rgba(0,0,0,.24);
+  overflow: hidden;
+  transition: opacity .22s ease, transform .22s ease;
+  backdrop-filter: blur(10px);
+}
+
+.pdpModal.open .pdpModal__panel{
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.pdpModal__head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(18,19,26,.08);
+}
+
+.pdpModal__body{
+  height: calc(100% - 56px);
+  overflow: auto;
+}
+
+.pdpGrid{
+  display:grid;
+  grid-template-columns: 1.1fr 0.9fr; /* Desktop: gauche photo / droite infos */
+  height: 100%;
+}
+
+.pdpMedia{
+  position: relative;
+  background: rgba(245,246,250,.9);
+  border-right: 1px solid rgba(18,19,26,.08);
+  min-height: 340px;
+}
+
+.pdpMedia img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display:block;
+}
+
+.pdpInfo{
+  padding: 18px 18px 22px;
+  display:flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pdpTop{
+  display:flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pdpPrice{
+  font-weight: 900;
+  letter-spacing: -.03em;
+  font-size: 26px;
+}
+
+.pdpRating{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pdpMeta{
+  color: rgba(18,19,26,.62);
+  font-size: 13px;
+}
+
+.pdpDesc{
+  color: rgba(18,19,26,.72);
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* Mobile: haut photo / bas infos */
+@media (max-width: 820px){
+  .pdpModal__panel{
+    width: calc(100vw - 20px);
+    height: calc(100vh - 20px);
+    border-radius: 18px;
+  }
+  .pdpGrid{
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .pdpMedia{
+    border-right: none;
+    border-bottom: 1px solid rgba(18,19,26,.08);
+    height: 44vh;          /* photo en haut */
+    min-height: 260px;
+  }
+  .pdpInfo{
+    padding: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+
+  .pdpModal__panel{
+    width: 92vw;                 /* ❌ plus full width */
+    max-width: 420px;            /* 🔥 centré & clean */
+    height: 75vh;
+    margin: auto;
+    border-radius: 18px;
+  }
+
+  .pdpGrid{
+    grid-template-columns: 1fr;
+  }
+
+  .pdpMedia{
+    height: 30vh;
+    min-height: 180px;
+  }
+
+}
+
+/* =========================
+   Animations — PDP + Drawer + Add to cart
+========================= */
+
+/* Reduce motion respect */
+@media (prefers-reduced-motion: reduce){
+  *{ animation: none !important; transition: none !important; }
+}
+
+/* ===== PDP modal ===== */
+.pdpModal{ display:none; }
+.pdpModal.open{ display:block; }
+
+.pdpModal__overlay{
+  opacity: 0;
+  transition: opacity .24s ease;
+}
+.pdpModal.open .pdpModal__overlay{ opacity: 1; }
+
+.pdpModal__panel{
+  opacity: 0;
+  transform: translate(-50%, -48%) scale(.98);
+  transition: transform .26s cubic-bezier(.2,.9,.2,1), opacity .2s ease;
+}
+.pdpModal.open .pdpModal__panel{
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* ===== Cart drawer ===== */
+.drawer .drawer__overlay{
+  opacity: 0;
+  transition: opacity .24s ease;
+}
+.drawer.open .drawer__overlay{
+  opacity: 1;
+}
+
+.drawer .drawer__panel{
+  transform: translateX(18px);
+  opacity: 0;
+  transition: transform .26s cubic-bezier(.2,.9,.2,1), opacity .2s ease;
+}
+.drawer.open .drawer__panel{
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* ===== Add-to-cart feedback ===== */
+@keyframes bump {
+  0%{ transform: scale(1); }
+  35%{ transform: scale(1.14); }
+  70%{ transform: scale(.98); }
+  100%{ transform: scale(1); }
+}
+.cartBtn.bump{ animation: bump .35s ease; }
+
+@keyframes flashCard {
+  0%{ box-shadow: 0 0 0 rgba(109,94,252,0); }
+  35%{ box-shadow: 0 0 0 6px rgba(109,94,252,.18); }
+  100%{ box-shadow: 0 0 0 rgba(109,94,252,0); }
+}
+.card.flash{ animation: flashCard .45s ease; }
+
+/* optional: toast */
+.toast{
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%) translateY(16px);
+  opacity: 0;
+  background: rgba(18,19,26,.92);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  z-index: 10000;
+  pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.toast.is-on{
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* =========================
+   Rupture de stock
+========================= */
+
+.card.is-out{
+  opacity: .55;
+  filter: grayscale(1);
+}
+
+.card.is-out .productMedia::after{
+  content: "Rupture";
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  background: rgba(18,19,26,.82);
+  color: #fff;
+}
+
+
+/* =========================
+   Notify switch (PDP)
+========================= */
+.notifyRow{
+  margin-top: 10px;
+  padding: 12px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(18,19,26,.10);
+  background: rgba(255,255,255,.70);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.notifyRow__left{
+  display:flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.switch{
+  position: relative;
+  width: 52px;
+  height: 30px;
+  display: inline-block;
+}
+
+.switch input{
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.switch__track{
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(18,19,26,.14);
+  transition: .2s ease;
+  box-shadow: inset 0 0 0 1px rgba(18,19,26,.10);
+}
+
+.switch__track::after{
+  content:"";
+  position:absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  transition: transform .22s cubic-bezier(.2,.9,.2,1);
+}
+
+.switch input:checked + .switch__track{
+  background: rgba(34,197,94,.85);
+}
+
+.switch input:checked + .switch__track::after{
+  transform: translateX(22px);
+}
+
+/* =========================
+   PACK — produit indisponible
+========================= */
+
+.packPick.is-out{
+  opacity: .45;
+  filter: grayscale(1);
+}
+
+.packPick.is-out img{
+  opacity: .6;
+}
+
+.packPick.is-out .packPick__actions{
+  pointer-events: none;
+  opacity: .5;
+}
+
+.packPick__media{
+  position: relative;
+}
+
+.packPick.is-out .packPick__media::after{
+  content: "Indisponible";
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(18,19,26,.85);
+  color: #fff;
+}

@@ -14,6 +14,8 @@ const STORAGE_KEY = "candle_shop_products_v2";
 const CART_KEY = "candle_shop_cart_v2";
 const NEWS_KEY = "candle_shop_newsletter_v1";
 const REVIEWS_KEY = "candle_shop_reviews_v1";
+const NOTIFY_KEY = "candle_shop_notify_v1";
+
 
 /* ==========
   Default data
@@ -54,6 +56,24 @@ function clampQty(q) {
 function safeJSON(raw, fallback) {
   try { return JSON.parse(raw); } catch { return fallback; }
 }
+
+function loadNotifyMap(){
+  return safeJSON(localStorage.getItem(NOTIFY_KEY), {}) || {};
+}
+function saveNotifyMap(map){
+  localStorage.setItem(NOTIFY_KEY, JSON.stringify(map));
+}
+function isNotified(productId){
+  const map = loadNotifyMap();
+  return !!map[productId];
+}
+function setNotified(productId, on){
+  const map = loadNotifyMap();
+  if (on) map[productId] = true;
+  else delete map[productId];
+  saveNotifyMap(map);
+}
+
 
 /* ==========
   Products storage
@@ -264,6 +284,9 @@ let chosenPackSize = null;
 /* Reviews modal state */
 let currentReviewProductId = null;
 
+let currentPdpId = null;
+
+
 /* ==========
   DOM
 ========== */
@@ -377,6 +400,25 @@ const els = {
   adminReviewsClear: document.getElementById("adminReviewsClear"),
   adminReviewsMsg: document.getElementById("adminReviewsMsg"),
 
+
+  // PDP modal
+pdpModal: document.getElementById("pdpModal"),
+pdpOverlay: document.getElementById("pdpOverlay"),
+pdpClose: document.getElementById("pdpClose"),
+pdpTitle: document.getElementById("pdpTitle"),
+pdpImg: document.getElementById("pdpImg"),
+pdpPrice: document.getElementById("pdpPrice"),
+pdpStock: document.getElementById("pdpStock"),
+pdpStars: document.getElementById("pdpStars"),
+pdpRatingMeta: document.getElementById("pdpRatingMeta"),
+pdpDesc: document.getElementById("pdpDesc"),
+pdpAddToCart: document.getElementById("pdpAddToCart"),
+pdpMsg: document.getElementById("pdpMsg"),
+
+pdpNotifyRow: document.getElementById("pdpNotifyRow"),
+pdpNotifyToggle: document.getElementById("pdpNotifyToggle"),
+
+
 };
 
 if (els.year) els.year.textContent = new Date().getFullYear();
@@ -399,6 +441,22 @@ function totalCartCount() {
 function toast(msg) {
   if (!els.checkoutMsg) return;
   els.checkoutMsg.textContent = msg;
+}
+
+function uiToast(text){
+  const t = document.getElementById("toast");
+  if (!t) return;
+  t.textContent = text;
+  t.classList.add("is-on");
+  clearTimeout(uiToast._t);
+  uiToast._t = setTimeout(() => t.classList.remove("is-on"), 1400);
+}
+
+function bumpCartIcon(){
+  if (!els.cartBtn) return;
+  els.cartBtn.classList.remove("bump");
+  void els.cartBtn.offsetWidth;
+  els.cartBtn.classList.add("bump");
 }
 
 /* ==========
@@ -465,43 +523,27 @@ function renderProducts() {
 
   for (const p of products) {
     const inStock = p.stock > 0;
-    const badge = inStock ? `${p.stock} en stock` : "Rupture";
-    const btnLabel = inStock ? "Ajouter" : "Indisponible";
-
-    const r = getAvgRating(p.id);
-    const avgTxt = r.avg ? r.avg.toFixed(1).replace(".", ",") : "0,0";
 
     const card = document.createElement("article");
-    card.className = "card";
+    card.className = "card" + (inStock ? "" : " is-out");
 
-    const img = p.image ? `<img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" loading="lazy" />` : "";
+    // ✅ TOUJOURS ouvrable
+    card.dataset.pdpOpen = p.id;
+
+    const img = p.image
+      ? `<img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" loading="lazy" />`
+      : "";
 
     card.innerHTML = `
       <div class="productMedia">
         ${img}
         <div class="productMedia__overlay"></div>
-        <div class="productMedia__top">
-          <span class="badge ${inStock ? "" : "badge--out"}">${badge}</span>
-        </div>
       </div>
 
       <div class="productBody">
-        <div>
-          <h3>${escapeHTML(p.name)}</h3>
-          <p>${escapeHTML(p.desc)}</p>
-
-          <div class="ratingRow">
-            ${starsHTML(r.avg)}
-            <span class="ratingMeta">${avgTxt} · ${r.count} avis</span>
-            <button class="btnReview" type="button" data-review-open="${p.id}">Avis</button>
-          </div>
-        </div>
-
+        <h3>${escapeHTML(p.name)}</h3>
         <div class="productFooter">
           <span class="price">${formatEUR(p.price)}</span>
-          <button class="btn btn--ghost" data-add="${p.id}" ${inStock ? "" : "disabled"}>
-            ${btnLabel}
-          </button>
         </div>
       </div>
     `;
@@ -509,6 +551,61 @@ function renderProducts() {
     els.grid.appendChild(card);
   }
 }
+
+
+function openPdp(productId){
+  const p = getProduct(productId);
+  if (!p || !els.pdpModal) return;
+
+  // Rupture : afficher switch "me prévenir", désactiver add
+if (els.pdpAddToCart) els.pdpAddToCart.disabled = !(p.stock > 0);
+
+if (els.pdpNotifyRow) {
+  const out = !(p.stock > 0);
+  els.pdpNotifyRow.style.display = out ? "" : "none";
+}
+
+if (els.pdpNotifyToggle) {
+  els.pdpNotifyToggle.checked = isNotified(p.id);
+}
+
+
+  currentPdpId = productId;
+
+  if (els.pdpTitle) els.pdpTitle.textContent = p.name;
+  if (els.pdpPrice) els.pdpPrice.textContent = formatEUR(p.price);
+  if (els.pdpDesc) els.pdpDesc.textContent = p.desc || "";
+  if (els.pdpStock) els.pdpStock.textContent = p.stock > 0 ? `${p.stock} en stock` : "Rupture";
+
+  if (els.pdpImg){
+    els.pdpImg.src = p.image || "";
+    els.pdpImg.alt = p.name;
+  }
+
+  // avis visibles direct
+  const r = getAvgRating(p.id);
+  const avgTxt = r.avg ? r.avg.toFixed(1).replace(".", ",") : "0,0";
+  if (els.pdpStars) els.pdpStars.innerHTML = starsHTML(r.avg);
+  if (els.pdpRatingMeta) els.pdpRatingMeta.textContent = `${avgTxt} · ${r.count} avis`;
+
+  // bouton add actif/inactif
+  if (els.pdpAddToCart) els.pdpAddToCart.disabled = !(p.stock > 0);
+
+  if (els.pdpMsg) els.pdpMsg.textContent = "";
+
+  els.pdpModal.classList.add("open");
+  els.pdpModal.setAttribute("aria-hidden", "false");
+}
+
+function closePdp(){
+  if (!els.pdpModal) return;
+  els.pdpModal.classList.remove("open");
+  els.pdpModal.setAttribute("aria-hidden", "true");
+  currentPdpId = null;
+  if (els.pdpMsg) els.pdpMsg.textContent = "";
+}
+
+
 
 /* ==========
   Cart logic (singles)
@@ -760,10 +857,12 @@ function renderPackPicker() {
   const units = Object.values(packSelection).reduce((a, b) => a + b, 0);
 
   for (const p of products) {
-    const qty = packSelection[p.id] || 0;
+  const qty = packSelection[p.id] || 0;
+  const inStock = p.stock > 0;
 
-    const card = document.createElement("div");
-    card.className = "packPick";
+  const card = document.createElement("div");
+  card.className = "packPick" + (inStock ? "" : " is-out");
+
 
     const img = p.image ? `<img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" loading="lazy" />` : "";
 
@@ -1175,6 +1274,21 @@ function saveNewsletterEmail(email) {
 
 document.addEventListener("click", (e) => {
 
+// Open PDP when clicking a product card (but not when clicking buttons inside)
+const openId = e.target?.closest?.("[data-pdp-open]")?.dataset?.pdpOpen;
+
+if (openId) {
+  const card = e.target?.closest?.(".card");
+  if (card){
+    card.classList.remove("flash");
+    void card.offsetWidth;
+    card.classList.add("flash");
+  }
+  openPdp(openId);
+  return;
+}
+
+
   // Gift Card: palette couleurs (swatches)
 const sw = e.target?.closest?.(".colorSwatches .swatch");
 if (sw && sw.dataset.gcColor) {
@@ -1311,6 +1425,37 @@ if (sw && sw.dataset.gcColor) {
 /* ==========
   Bindings
 ========== */
+
+els.pdpNotifyToggle?.addEventListener("change", () => {
+  if (!currentPdpId) return;
+  setNotified(currentPdpId, !!els.pdpNotifyToggle.checked);
+
+  // feedback petit
+  if (typeof uiToast === "function") {
+    uiToast(els.pdpNotifyToggle.checked ? " ✅ Nous te préviendrons lorqu'on aura du stock" : "❌ Notification désactivé");
+  }
+});
+
+
+// PDP close
+els.pdpClose?.addEventListener("click", closePdp);
+els.pdpOverlay?.addEventListener("click", closePdp);
+
+// PDP add to cart
+els.pdpAddToCart?.addEventListener("click", () => {
+  if (!currentPdpId) return;
+
+  addToCart(currentPdpId, 1);
+
+  bumpCartIcon();
+  uiToast("Ajouté au panier ✅");
+
+  if (els.pdpMsg) {
+    els.pdpMsg.textContent = "Ajouté au panier ✅";
+    setTimeout(() => (els.pdpMsg.textContent = ""), 1200);
+  }
+});
+
 
 if (els.cartBtn) els.cartBtn.addEventListener("click", openCart);
 if (els.cartClose) els.cartClose.addEventListener("click", closeCart);
