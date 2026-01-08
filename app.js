@@ -1447,6 +1447,9 @@ if (e.target?.closest?.("[data-reviews-form-close]")) {
       }
 
       packSelection[id] = current + 1;
+
+
+
     } else if (dec) {
       const next = Math.max(0, current - 1);
       if (next === 0) delete packSelection[id];
@@ -1566,6 +1569,8 @@ els.pdpAddToCart?.addEventListener("click", () => {
     els.pdpMsg.textContent = "Ajouté au panier ✅";
     setTimeout(() => (els.pdpMsg.textContent = ""), 1200);
   }
+
+  closePdp();
 });
 
 
