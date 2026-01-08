@@ -440,6 +440,7 @@
         </div>
       </div>
 
+
       <div class="reviewsList" id="reviewsList"></div>
 
       <hr class="sep"/>
@@ -502,7 +503,10 @@
           <div class="pdpRating">
             <div id="pdpStars"></div>
             <span class="pdpMeta" id="pdpRatingMeta">0,0 · 0 avis</span>
+
+             <button class="btnReview" type="button" id="pdpReviewBtn">Laisser un avis</button>
           </div>
+
 
           <p class="pdpDesc" id="pdpDesc"></p>
 
@@ -517,14 +521,15 @@
     <span class="muted tiny">Notification (démo, stock local)</span>
   </div>
 
-  <label class="switch" aria-label="Me prévenir quand dispo">
-    <input type="checkbox" id="pdpNotifyToggle" />
-    <span class="switch__track" aria-hidden="true"></span>
-  </label>
+ <label class="notifyToggle">
+  <input type="checkbox" id="pdpNotifyToggle" />
+  <span class="toggleUi"></span>
+</label>
+
 
   <div class="label" style="margin-top:10px;">
   Ton email
-  <input id="pdpNotifyEmail" type="email" placeholder="ex: toi@gmail.com" autocomplete="email">
+  <input id="pdpNotifyEmail" type="email" placeholder="ex: toi@gmail.com" />
   <p class="formMsg" id="pdpNotifyMsg" role="status" aria-live="polite"></p>
 </div>
 

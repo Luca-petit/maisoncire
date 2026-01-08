@@ -58,22 +58,35 @@ function safeJSON(raw, fallback) {
   try { return JSON.parse(raw); } catch { return fallback; }
 }
 
-function loadNotifyMap() {
+function loadNotifyMap(){
   return safeJSON(localStorage.getItem(NOTIFY_KEY), {}) || {};
 }
-function saveNotifyMap(map) {
+function saveNotifyMap(map){
   localStorage.setItem(NOTIFY_KEY, JSON.stringify(map));
 }
-function isNotified(productId) {
+
+// map: { [productId]: "email@..." }
+function getNotifiedEmail(productId){
   const map = loadNotifyMap();
-  return !!map[productId];
+  const v = map?.[productId];
+  return typeof v === "string" ? v : "";
 }
-function setNotified(productId, on) {
+function isNotified(productId){
+  return !!getNotifiedEmail(productId);
+}
+function setNotified(productId, emailOrFalse){
   const map = loadNotifyMap();
-  if (on) map[productId] = true;
+  if (emailOrFalse && typeof emailOrFalse === "string") map[productId] = emailOrFalse;
   else delete map[productId];
   saveNotifyMap(map);
 }
+
+function isValidEmail(s){
+  const v = String(s || "").trim();
+  // simple + efficace
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
 
 /* ==========
   Products storage
@@ -390,6 +403,11 @@ const els = {
 
   pdpNotifyRow: document.getElementById("pdpNotifyRow"),
   pdpNotifyToggle: document.getElementById("pdpNotifyToggle"),
+
+  pdpNotifyEmail: document.getElementById("pdpNotifyEmail"),
+  pdpReviewBtn: document.getElementById("pdpReviewBtn"),
+
+
 };
 
 if (els.year) els.year.textContent = new Date().getFullYear();
@@ -576,6 +594,27 @@ function openPdp(productId) {
   }
 
   currentPdpId = productId;
+
+  // Rupture : afficher switch "me prévenir", désactiver add
+if (els.pdpAddToCart) els.pdpAddToCart.disabled = !(p.stock > 0);
+
+if (els.pdpNotifyRow) {
+  const out = !(p.stock > 0);
+  els.pdpNotifyRow.style.display = out ? "" : "none";
+}
+
+if (els.pdpNotifyToggle) {
+  const savedEmail = getNotifiedEmail(p.id);
+  els.pdpNotifyToggle.checked = !!savedEmail;
+
+  // synchro input email
+  if (els.pdpNotifyEmail) {
+    els.pdpNotifyEmail.value = savedEmail || "";
+    els.pdpNotifyEmail.readOnly = !!savedEmail; // ✅ lock quand ON
+    els.pdpNotifyEmail.dataset.saved = savedEmail || "";
+  }
+}
+
 
   if (els.pdpTitle) els.pdpTitle.textContent = p.name;
   if (els.pdpPrice) els.pdpPrice.textContent = formatEUR(p.price);
@@ -1395,13 +1434,78 @@ document.addEventListener("click", (e) => {
   Bindings
 ========== */
 
+// PDP: ouvrir le modal "avis"
+els.pdpReviewBtn?.addEventListener("click", () => {
+  if (!currentPdpId) return;
+  openReviews(currentPdpId);
+});
+
+
 els.pdpNotifyToggle?.addEventListener("change", () => {
   if (!currentPdpId) return;
-  setNotified(currentPdpId, !!els.pdpNotifyToggle.checked);
-  if (typeof uiToast === "function") {
-    uiToast(els.pdpNotifyToggle.checked ? "✅ Nous te préviendrons lorsqu'on aura du stock" : "❌ Notification désactivée");
+
+  const on = !!els.pdpNotifyToggle.checked;
+  const email = (els.pdpNotifyEmail?.value || "").trim();
+
+  // ON => email obligatoire + valide
+  if (on) {
+    if (!isValidEmail(email)) {
+      els.pdpNotifyToggle.checked = false;
+      if (els.pdpMsg) els.pdpMsg.textContent = "Entre un email valide pour activer l’alerte.";
+      uiToast?.("Entre un email valide ✉️");
+      return;
+    }
+
+    // Déjà enregistré ?
+    const already = getNotifiedEmail(currentPdpId);
+    if (already) {
+      els.pdpNotifyToggle.checked = true;
+      if (els.pdpNotifyEmail) {
+        els.pdpNotifyEmail.value = already;
+        els.pdpNotifyEmail.readOnly = true;
+        els.pdpNotifyEmail.dataset.saved = already;
+      }
+      if (els.pdpMsg) els.pdpMsg.textContent = "Vous avez déjà indiqué votre adresse mail.";
+      uiToast?.("Déjà enregistré ✅");
+      return;
+    }
+
+    // Enregistre
+    setNotified(currentPdpId, email);
+
+    if (els.pdpNotifyEmail) {
+      els.pdpNotifyEmail.readOnly = true;
+      els.pdpNotifyEmail.dataset.saved = email;
+    }
+
+    if (els.pdpMsg) els.pdpMsg.textContent = "On te préviendra quand ce sera dispo ✅";
+    uiToast?.("Alerte activée ✅");
+    return;
   }
+
+  // OFF => supprimer l’email enregistré + unlock
+  setNotified(currentPdpId, false);
+
+  if (els.pdpNotifyEmail) {
+    els.pdpNotifyEmail.readOnly = false;
+    els.pdpNotifyEmail.dataset.saved = "";
+  }
+
+  if (els.pdpMsg) els.pdpMsg.textContent = "Alerte désactivée.";
+  uiToast?.("Alerte désactivée ❌");
 });
+
+els.pdpNotifyEmail?.addEventListener("input", () => {
+  if (!currentPdpId) return;
+  const saved = getNotifiedEmail(currentPdpId);
+  if (!saved) return; // OFF => editable normal
+
+  // ON => on bloque toute tentative de changement
+  els.pdpNotifyEmail.value = saved;
+  if (els.pdpMsg) els.pdpMsg.textContent = "Vous avez déjà indiqué votre adresse mail.";
+  uiToast?.("Email déjà enregistré ✅");
+});
+
 
 // PDP close
 els.pdpClose?.addEventListener("click", closePdp);
@@ -1611,6 +1715,12 @@ if (els.reviewForm) {
     if (els.reviewsCount) els.reviewsCount.textContent = String(count);
 
     renderProducts();
+
+    // refresh PDP si elle est ouverte sur ce produit
+if (currentPdpId === currentReviewProductId) {
+  openPdp(currentPdpId);
+}
+
   });
 }
 
