@@ -546,6 +546,10 @@ function renderProducts() {
   for (const p of products) {
     const inStock = availableStock(p.id) > 0;
 
+    // ⭐ rating data
+    const r = getAvgRating(p.id);
+    const avgTxt = r.avg ? r.avg.toFixed(1).replace(".", ",") : "0,0";
+
     const card = document.createElement("article");
     card.className = "card" + (inStock ? "" : " is-out");
 
@@ -564,6 +568,12 @@ function renderProducts() {
 
       <div class="productBody">
         <h3>${escapeHTML(p.name)}</h3>
+
+        <div class="productRating">
+          ${starsHTML(r.avg)}
+          <span class="tiny muted">${avgTxt} · ${r.count} avis</span>
+        </div>
+
         <div class="productFooter">
           <span class="price">${formatEUR(p.price)}</span>
         </div>
@@ -911,10 +921,16 @@ function renderPackPicker() {
     const leftForWizard = availableStockForPackBuilder(p.id);
     const isOut = leftForWizard <= 0;
 
+    // ✅ Avis (étoiles + moyenne + nb)
+    const rr = getAvgRating(p.id);
+    const avgTxt = rr.avg ? rr.avg.toFixed(1).replace(".", ",") : "0,0";
+
     const card = document.createElement("div");
     card.className = "packPick" + (isOut ? " is-out" : "");
 
-    const img = p.image ? `<img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" loading="lazy" />` : "";
+    const img = p.image
+      ? `<img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" loading="lazy" />`
+      : "";
 
     card.innerHTML = `
       <div class="packPick__media">${img}</div>
@@ -922,8 +938,18 @@ function renderPackPicker() {
         <div class="packPick__title">
           <div>
             <h4>${escapeHTML(p.name)}</h4>
-            <p>${formatEUR(p.price)} · Stock ${availableStock(p.id)}</p>
+
+            <!-- ✅ Stock supprimé, remplacé par avis -->
+            <p class="packPickMeta">
+              ${formatEUR(p.price)}
+              <span class="dot">•</span>
+              <span class="packPickReviews">
+                ${starsHTML(rr.avg)}
+                <span class="tiny muted">${avgTxt} · ${rr.count} avis</span>
+              </span>
+            </p>
           </div>
+
           ${qty > 0 ? `<span class="badge">${qty}x</span>` : ``}
         </div>
 
@@ -949,6 +975,7 @@ function renderPackPicker() {
 
   renderPackPreview();
 }
+
 
 function renderPackPreview() {
   if (!els.packPreviewLines) return;

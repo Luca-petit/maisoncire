@@ -2237,18 +2237,27 @@ div[x-apple-data-detectors] {
   -webkit-text-fill-color: inherit !important;
 }
 
-.price,
-.pdpPrice,
-.pdpRatingMeta,
-.reviewsSummary,
-.reviewItem {
-  color: inherit !important;
-  -webkit-text-fill-color: inherit !important;
-}
-
 button,
 a,
 .card,
 .packPick {
   -webkit-tap-highlight-color: rgba(0,0,0,0);
+}
+
+
+.packPickMeta{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.packPickMeta .dot{ opacity:.35; }
+.packPickReviews{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.packPickReviews .stars{
+  transform: scale(.9);
+  transform-origin:left;
 }
