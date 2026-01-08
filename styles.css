@@ -2440,3 +2440,52 @@ a,
     width: auto;
   }
 }
+
+.hamburger{
+  width:44px;height:44px;
+  border-radius:14px;
+  border:1px solid rgba(0,0,0,.08);
+  background:#fff;
+  display:grid;
+  place-items:center;
+  box-shadow: 0 10px 30px rgba(0,0,0,.08);
+}
+
+.hamburger__bars{
+  position:relative;
+  width:22px;
+  height:2px;
+  background:#111;
+  border-radius:999px;
+  transition: background .2s ease;
+}
+
+.hamburger__bars::before,
+.hamburger__bars::after{
+  content:"";
+  position:absolute;
+  left:0;
+  width:22px;
+  height:2px;
+  background:#111;
+  border-radius:999px;
+  transition: transform .25s ease, top .25s ease, opacity .2s ease;
+}
+
+.hamburger__bars::before{ top:-7px; }
+.hamburger__bars::after{ top:7px; }
+
+/* ✅ état ouvert -> croix */
+.hamburger.is-open .hamburger__bars{
+  background:transparent;
+}
+
+.hamburger.is-open .hamburger__bars::before{
+  top:0;
+  transform: rotate(45deg);
+}
+
+.hamburger.is-open .hamburger__bars::after{
+  top:0;
+  transform: rotate(-45deg);
+}

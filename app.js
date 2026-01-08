@@ -1649,15 +1649,32 @@ if (els.checkoutBtn) {
   });
 }
 
-if (els.hamburger) {
-  els.hamburger.addEventListener("click", () => {
-  if (!els.nav) return;
-  const isOpen = els.nav.classList.toggle("open");
-  els.hamburger.classList.toggle("is-open", isOpen); // ✅ animation 3 barres -> X
-  els.hamburger.setAttribute("aria-expanded", String(isOpen));
+/* =========================
+   HAMBURGER MENU (FIX)
+========================= */
+
+function setMenuOpen(open) {
+  if (!els.nav || !els.hamburger) return;
+
+  // on met les 2 classes pour être compatible avec ton CSS
+  els.nav.classList.toggle("open", open);
+  els.nav.classList.toggle("is-open", open);
+
+  els.hamburger.classList.toggle("is-open", open);
+  els.hamburger.setAttribute("aria-expanded", String(open));
+}
+
+els.hamburger?.addEventListener("click", () => {
+  const isOpen = els.nav?.classList.contains("open") || els.nav?.classList.contains("is-open");
+  setMenuOpen(!isOpen);
 });
 
-}
+// ✅ Fermer quand on clique sur un lien du menu
+document.querySelectorAll("#nav a").forEach(a => {
+  a.addEventListener("click", () => setMenuOpen(false));
+});
+
+
 
 if (els.newsletterForm) {
   els.newsletterForm.addEventListener("submit", (e) => {
