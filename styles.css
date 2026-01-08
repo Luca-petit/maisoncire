@@ -2263,7 +2263,6 @@ a,
 }
 
 /* ===== Mobile header: hamburger à gauche, panier à droite ===== */
-
 .hamburger {
   display: none;              /* desktop: caché */
   width: 44px;
@@ -2318,15 +2317,126 @@ a,
   transform: rotate(-45deg);
 }
 
-/* Mobile rules */
-@media (max-width: 820px) {
-  .hamburger { display: inline-flex; }
-
-  /* Cache le texte "Maison Cire" sur mobile */
-  .brandText { display: none !important; }
-
-  /* Optionnel : garder juste le petit point/logo */
-  /* .brandDot { display:inline-block; } */
+/* ===== Header layout (Desktop + Mobile) ===== */
+.header{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:14px 18px;
 }
 
+/* Brand */
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex:0 0 auto;
+}
+.brandText{
+  white-space:nowrap; /* évite Maison / Cire */
+}
 
+/* Nav au centre sur desktop */
+.nav{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:18px;
+  flex:1 1 auto;
+  min-width:0;
+  flex-wrap:nowrap;
+  max-width: 600px;
+}
+
+/* Actions à droite */
+.headerActions{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex:0 0 auto;
+}
+
+/* Desktop: hamburger caché */
+@media (min-width: 900px){
+  .hamburger{ display:none; }
+}
+
+/* Mobile: on cache le brand + la nav, et on force hamburger gauche / panier droite */
+@media (max-width: 1024px){
+  .brand{ display:none; }
+  .nav{ display:none; }
+
+  .header{
+    justify-content:space-between;
+  }
+
+  .headerActions{
+    width:100%;
+    justify-content:space-between; /* hamburger à gauche, panier à droite */
+  }
+
+  .hamburger{ display:inline-flex; }
+}
+
+/* MOBILE + TABLETTE */
+@media (max-width: 1024px){
+  .header{
+    justify-content: space-between;
+  }
+
+  .brand{ display:none; }
+
+  .hamburger{ display:flex; }
+
+  .nav{
+    display:none;
+  }
+
+  .nav.open{
+    display:flex;
+    position:absolute;
+    left: 16px;
+    right: 16px;
+    top: 72px;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    border-radius: 18px;
+    background: rgba(255,255,255,.96);
+    border: 1px solid rgba(0,0,0,.08);
+    box-shadow: 0 20px 60px rgba(0,0,0,.10);
+  }
+
+  .headerActions{
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* DESKTOP */
+@media (min-width: 1025px){
+  .brand{ display:flex; }
+
+  .hamburger{ display:none; }
+
+  .nav{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 22px;
+
+    max-width: 720px;
+    width: 100%;
+    margin: 0 auto;
+
+    padding: 12px 26px;
+    border-radius: 999px;
+    background: #f3f3f3;
+    border: 1px solid rgba(0,0,0,.06);
+    position: static; /* important */
+  }
+
+  .headerActions{
+    width: auto;
+  }
+}

@@ -232,7 +232,7 @@ function starsHTML(value) {
 ========== */
 
 function setReviewRating(rating) {
-  const r = Math.max(1, Math.min(5, Number(rating) || 5));
+  const r = Math.max(0, Math.min(5, Number(rating) || 0));
   if (els.reviewRatingInput) els.reviewRatingInput.value = String(r);
   if (els.reviewRatingSelect) els.reviewRatingSelect.value = String(r);
   renderReviewStarsUI(r);
@@ -248,7 +248,7 @@ function getReviewRating() {
 function renderReviewStarsUI(current) {
   if (!els.reviewStars) return;
 
-  const c = Math.max(1, Math.min(5, Number(current) || 5));
+  const c = Math.max(0, Math.min(5, Number(current) || 0));
   const btn = (i) => `
     <button type="button"
             class="starPick ${i <= c ? "is-on" : ""}"
@@ -571,7 +571,7 @@ function renderProducts() {
 
         <div class="productRating">
           ${starsHTML(r.avg)}
-          <span class="tiny muted">${avgTxt} · ${r.count} avis</span>
+          <span class="tiny muted">${avgTxt} · (${r.count})</span>
         </div>
 
         <div class="productFooter">
@@ -945,7 +945,7 @@ function renderPackPicker() {
               <span class="dot">•</span>
               <span class="packPickReviews">
                 ${starsHTML(rr.avg)}
-                <span class="tiny muted">${avgTxt} · ${rr.count} avis</span>
+                <span class="tiny muted">${avgTxt} · (${rr.count})</span>
               </span>
             </p>
           </div>
@@ -1230,8 +1230,9 @@ function openReviewsForm(productId) {
 
   // init étoiles input
   if (els.reviewRatingInput) {
-  els.reviewRatingInput.value = els.reviewRatingInput.value || "5";
-  renderReviewStarsUI(Number(els.reviewRatingInput.value || 5));
+  els.reviewRatingInput.value = "0";
+  renderReviewStarsUI(0);
+
 }
 
 
@@ -1803,7 +1804,7 @@ if (els.reviewForm) {
 
     if (els.reviewName) els.reviewName.value = "";
     if (els.reviewText) els.reviewText.value = "";
-    setReviewRating(5);
+    setReviewRating(0);
 
     if (els.reviewMsg) {
       els.reviewMsg.textContent = "Avis publié ✅";
@@ -1822,6 +1823,13 @@ if (els.reviewForm) {
 if (currentPdpId === currentReviewProductId) {
   openPdp(currentPdpId);
 }
+
+setTimeout(() => {
+  closeReviewsForm();
+  uiToast("Merci pour votre avis ⭐");
+}, 300);
+
+
 
   });
 }
