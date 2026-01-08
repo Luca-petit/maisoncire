@@ -13,10 +13,11 @@
 <body>
   <!-- Header -->
   <header class="header">
-    <a class="brand" href="#">
-      <span class="brand__dot" aria-hidden="true"></span>
-      <span>Maison Cire</span>
-    </a>
+    <div class="brand">
+      <span class="brandDot"></span>
+      <span class="brandText">Maison Cire</span>
+    </div>
+
 
     <nav class="nav" id="nav" aria-label="Navigation">
       <a href="#boutique">Boutique</a>
@@ -26,16 +27,17 @@
       <a href="#admin">Admin</a>
     </nav>
 
-    <div style="display:flex; align-items:center; gap:10px;">
-      <button class="hamburger" id="hamburger" aria-label="Ouvrir le menu" aria-expanded="false">
-        <span></span><span></span><span></span>
-      </button>
+    <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:0 0px;">
+  <button id="hamburger" class="hamburger" aria-label="Menu" aria-expanded="false" type="button">
+    <span class="hamburger__bars" aria-hidden="true"></span>
+  </button>
 
-      <button class="cartBtn" id="cartBtn" aria-label="Ouvrir le panier">
-        <span aria-hidden="true">🛒</span>
-        <span class="cartBtn__count" id="cartCount">0</span>
-      </button>
-    </div>
+  <button class="cartBtn" id="cartBtn" aria-label="Ouvrir le panier">
+    <span aria-hidden="true">🛒</span>
+    <span class="cartBtn__count" id="cartCount">0</span>
+  </button>
+</div>
+
   </header>
 
   <!-- Hero -->
@@ -455,17 +457,19 @@
     </div>
 
     <div class="modal__body">
+      
       <form id="reviewForm">
         <label class="label">
           Votre prénom
           <input id="reviewName" required />
         </label>
 
-        <label class="label">
+        <label class="label" style="min-width:160px;">
           Note
-          <div id="reviewStars"></div>
           <input type="hidden" id="reviewRating" value="5" />
+          <div id="reviewStars"></div>
         </label>
+
 
         <label class="label">
           Commentaire (optionnel)
@@ -506,13 +510,13 @@
           </div>
 
           <div class="pdpRating">
-  <div id="pdpStars" class="pdpStars" data-open-reviews></div>
-  <span id="pdpRatingMeta">0,0 · 0 avis</span>
+            <div id="pdpStars" class="pdpStars" data-open-reviews></div>
+            <span id="pdpRatingMeta">0,0 · 0 avis</span>
 
-  <button class="btnReviewSmall" id="pdpReviewBtn">
-    Laisser un avis
-  </button>
-</div>
+            <button class="btnReviewSmall" id="pdpReviewBtn">
+              Laisser un avis
+            </button>
+          </div>
 
 
           <p class="pdpDesc" id="pdpDesc"></p>

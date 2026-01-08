@@ -1650,10 +1650,12 @@ if (els.checkoutBtn) {
 
 if (els.hamburger) {
   els.hamburger.addEventListener("click", () => {
-    if (!els.nav) return;
-    const isOpen = els.nav.classList.toggle("open");
-    els.hamburger.setAttribute("aria-expanded", String(isOpen));
-  });
+  if (!els.nav) return;
+  const isOpen = els.nav.classList.toggle("open");
+  els.hamburger.classList.toggle("is-open", isOpen); // ✅ animation 3 barres -> X
+  els.hamburger.setAttribute("aria-expanded", String(isOpen));
+});
+
 }
 
 if (els.newsletterForm) {
