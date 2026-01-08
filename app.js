@@ -254,7 +254,7 @@ function renderReviewStarsUI(current) {
             class="starPick ${i <= c ? "is-on" : ""}"
             data-star-pick="${i}"
             aria-label="${i} étoile${i > 1 ? "s" : ""}"
-            aria-pressed="${i <= c ? "true" : "false"}"></button>
+            aria-pressed="${i === c ? "true" : "false"}"></button>
   `;
 
   els.reviewStars.innerHTML = `
@@ -264,6 +264,7 @@ function renderReviewStarsUI(current) {
     <div class="tiny muted" style="margin-top:8px;">Note : <strong>${c}</strong> / 5</div>
   `;
 }
+
 
 /* ==========
   Global state
@@ -365,20 +366,22 @@ const els = {
   gcCustomAmount: document.getElementById("gcCustomAmount"),
 
   // Reviews Modal
-  reviewsModal: document.getElementById("reviewsModal"),
-  reviewsTitle: document.getElementById("reviewsTitle"),
-  reviewsAvgStars: document.getElementById("reviewsAvgStars"),
-  reviewsAvgText: document.getElementById("reviewsAvgText"),
-  reviewsCount: document.getElementById("reviewsCount"),
-  reviewsList: document.getElementById("reviewsList"),
+  // Reviews (2 modals)
+reviewsViewModal: document.getElementById("reviewsViewModal"),
+reviewsFormModal: document.getElementById("reviewsFormModal"),
 
-  reviewForm: document.getElementById("reviewForm"),
-  reviewName: document.getElementById("reviewName"),
-  reviewStars: document.getElementById("reviewStars"),
-  reviewRatingInput: document.getElementById("reviewRating"),
-  reviewRatingSelect: document.getElementById("reviewRatingSelect"),
-  reviewText: document.getElementById("reviewText"),
-  reviewMsg: document.getElementById("reviewMsg"),
+reviewsAvgStars: document.getElementById("reviewsAvgStars"),
+reviewsAvgText: document.getElementById("reviewsAvgText"),
+reviewsCount: document.getElementById("reviewsCount"),
+reviewsList: document.getElementById("reviewsList"),
+
+reviewForm: document.getElementById("reviewForm"),
+reviewName: document.getElementById("reviewName"),
+reviewStars: document.getElementById("reviewStars"),
+reviewRatingInput: document.getElementById("reviewRating"),
+reviewText: document.getElementById("reviewText"),
+reviewMsg: document.getElementById("reviewMsg"),
+
 
   // Admin reviews
   adminReviewsCount: document.getElementById("adminReviewsCount"),
@@ -595,8 +598,6 @@ function openPdp(productId) {
 
   currentPdpId = productId;
 
-  // Rupture : afficher switch "me prévenir", désactiver add
-if (els.pdpAddToCart) els.pdpAddToCart.disabled = !(p.stock > 0);
 
 if (els.pdpNotifyRow) {
   const out = !(p.stock > 0);
@@ -1171,13 +1172,11 @@ function resetGiftCardForm() {
   Reviews modal
 ========== */
 
-function openReviews(productId) {
+function openReviewsView(productId) {
   const p = getProduct(productId);
-  if (!p || !els.reviewsModal) return;
+  if (!p || !els.reviewsViewModal) return;
 
   currentReviewProductId = productId;
-
-  if (els.reviewsTitle) els.reviewsTitle.textContent = `Avis — ${p.name}`;
 
   const { avg, count } = getAvgRating(productId);
   if (els.reviewsAvgStars) els.reviewsAvgStars.innerHTML = starsHTML(avg);
@@ -1186,20 +1185,42 @@ function openReviews(productId) {
 
   renderReviewsList(productId);
 
-  if (els.reviewRatingInput && !els.reviewRatingInput.value) els.reviewRatingInput.value = "5";
-  renderReviewStarsUI(getReviewRating() || 5);
-
-  els.reviewsModal.classList.add("open");
-  els.reviewsModal.setAttribute("aria-hidden", "false");
+  els.reviewsViewModal.classList.add("open");
+  els.reviewsViewModal.setAttribute("aria-hidden", "false");
 }
 
-function closeReviews() {
-  if (!els.reviewsModal) return;
-  els.reviewsModal.classList.remove("open");
-  els.reviewsModal.setAttribute("aria-hidden", "true");
-  currentReviewProductId = null;
+function closeReviewsView() {
+  if (!els.reviewsViewModal) return;
+  els.reviewsViewModal.classList.remove("open");
+  els.reviewsViewModal.setAttribute("aria-hidden", "true");
+}
+
+function openReviewsForm(productId) {
+  const p = getProduct(productId);
+  if (!p || !els.reviewsFormModal) return;
+
+  currentReviewProductId = productId;
+
+  // init étoiles input
+  if (els.reviewRatingInput) {
+  els.reviewRatingInput.value = els.reviewRatingInput.value || "5";
+  renderReviewStarsUI(Number(els.reviewRatingInput.value || 5));
+}
+
+
+  if (els.reviewMsg) els.reviewMsg.textContent = "";
+
+  els.reviewsFormModal.classList.add("open");
+  els.reviewsFormModal.setAttribute("aria-hidden", "false");
+}
+
+function closeReviewsForm() {
+  if (!els.reviewsFormModal) return;
+  els.reviewsFormModal.classList.remove("open");
+  els.reviewsFormModal.setAttribute("aria-hidden", "true");
   if (els.reviewMsg) els.reviewMsg.textContent = "";
 }
+
 
 function renderReviewsList(productId) {
   if (!els.reviewsList) return;
@@ -1341,12 +1362,18 @@ document.addEventListener("click", (e) => {
     return;
   }
 
-  // Reviews: open modal
-  const ro = e.target?.dataset?.reviewOpen;
-  if (ro) { openReviews(ro); return; }
+// Reviews: close VIEW modal
+if (e.target?.closest?.("[data-reviews-view-close]")) {
+  closeReviewsView();
+  return;
+}
 
-  // Reviews: close modal
-  if (e.target?.closest?.("[data-reviews-close]")) { closeReviews(); return; }
+// Reviews: close FORM modal
+if (e.target?.closest?.("[data-reviews-form-close]")) {
+  closeReviewsForm();
+  return;
+}
+
 
   // Reviews: clickable stars in modal
   const sp = e.target?.closest?.("[data-star-pick]")?.dataset?.starPick;
@@ -1434,11 +1461,26 @@ document.addEventListener("click", (e) => {
   Bindings
 ========== */
 
-// PDP: ouvrir le modal "avis"
+// Voir les avis (clic sur "x avis")
+els.pdpRatingMeta?.addEventListener("click", () => {
+  if (!currentPdpId) return;
+  openReviewsView(currentPdpId);
+});
+
+els.pdpRatingMeta?.addEventListener("keydown", (e) => {
+  if (!currentPdpId) return;
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    openReviewsView(currentPdpId);
+  }
+});
+
+// Laisser un avis
 els.pdpReviewBtn?.addEventListener("click", () => {
   if (!currentPdpId) return;
-  openReviews(currentPdpId);
+  openReviewsForm(currentPdpId);
 });
+
 
 
 els.pdpNotifyToggle?.addEventListener("change", () => {
@@ -1525,6 +1567,32 @@ els.pdpAddToCart?.addEventListener("click", () => {
     setTimeout(() => (els.pdpMsg.textContent = ""), 1200);
   }
 });
+
+
+els.pdpStars?.addEventListener("click", () => {
+  if (!currentPdpId) return;
+  openReviewsView(currentPdpId);
+});
+
+
+// ⭐ Rating stars — un seul handler (mobile safe)
+function onStarPick(e) {
+  const btn = e.target?.closest?.("[data-star-pick]");
+  if (!btn) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  const value = Number(btn.dataset.starPick || 0);
+  if (!value) return;
+
+  setReviewRating(value);
+}
+
+// Sur iPhone, pointerdown/touchstart est plus fiable que click
+els.reviewStars?.addEventListener("pointerdown", onStarPick, { passive: false });
+els.reviewStars?.addEventListener("click", onStarPick);
+
 
 if (els.cartBtn) els.cartBtn.addEventListener("click", openCart);
 if (els.cartClose) els.cartClose.addEventListener("click", closeCart);

@@ -420,61 +420,66 @@
     </div>
   </footer>
 
+<!-- Reviews VIEW Modal -->
+<div class="modal modal--top" id="reviewsViewModal" aria-hidden="true">
+  <div class="modal__overlay" data-reviews-view-close></div>
 
-  <!-- Reviews Modal -->
-<div class="modal" id="reviewsModal" aria-hidden="true">
-  <div class="modal__overlay" data-reviews-close></div>
-
-  <div class="modal__panel" role="dialog" aria-modal="true" aria-label="Avis produit">
+  <div class="modal__panel" role="dialog" aria-modal="true">
     <div class="modal__head">
-      <strong id="reviewsTitle">Avis</strong>
-      <button class="iconBtn" type="button" data-reviews-close aria-label="Fermer">✕</button>
+      <strong>Avis clients</strong>
+      <button class="iconBtn" data-reviews-view-close>✕</button>
     </div>
 
     <div class="modal__body">
       <div class="reviewsSummary">
-        <div class="stars" id="reviewsAvgStars"></div>
-        <div class="reviewsSummary__text">
-          <div><strong id="reviewsAvgText">0,0</strong> / 5</div>
+        <div id="reviewsAvgStars"></div>
+        <div>
+          <strong id="reviewsAvgText">0,0</strong> / 5  
           <div class="muted tiny"><span id="reviewsCount">0</span> avis</div>
         </div>
       </div>
 
-
       <div class="reviewsList" id="reviewsList"></div>
+    </div>
+  </div>
+</div>
 
-      <hr class="sep"/>
+<!-- Reviews FORM Modal -->
+<div class="modal modal--top" id="reviewsFormModal" aria-hidden="true">
+  <div class="modal__overlay" data-reviews-form-close></div>
 
-      <form id="reviewForm" class="reviewForm">
-        <div class="reviewForm__row">
-          <label class="label" style="flex:1;">
-            Votre prénom
-            <input id="reviewName" type="text" placeholder="Ex: Lina" required />
-          </label>
+  <div class="modal__panel" role="dialog" aria-modal="true">
+    <div class="modal__head">
+      <strong>Laisser un avis</strong>
+      <button class="iconBtn" data-reviews-form-close>✕</button>
+    </div>
 
-          <label class="label" style="min-width:160px;">
-            Note
-            <select id="reviewRating" required>
-              <option value="5">5 ⭐</option>
-              <option value="4">4 ⭐</option>
-              <option value="3">3 ⭐</option>
-              <option value="2">2 ⭐</option>
-              <option value="1">1 ⭐</option>
-            </select>
-          </label>
-        </div>
+    <div class="modal__body">
+      <form id="reviewForm">
+        <label class="label">
+          Votre prénom
+          <input id="reviewName" required />
+        </label>
+
+        <label class="label">
+          Note
+          <div id="reviewStars"></div>
+          <input type="hidden" id="reviewRating" value="5" />
+        </label>
 
         <label class="label">
           Commentaire (optionnel)
-          <textarea id="reviewText" rows="3" placeholder="Votre retour…"></textarea>
+          <textarea id="reviewText"></textarea>
         </label>
 
-        <button class="btn btn--primary" type="submit">Publier l’avis</button>
-        <p class="formMsg" id="reviewMsg" role="status" aria-live="polite"></p>
+        <button class="btn btn--primary">Publier l’avis</button>
+        <p class="formMsg" id="reviewMsg"></p>
       </form>
     </div>
   </div>
 </div>
+
+
 
 <!-- Product Modal (PDP) -->
 <div class="pdpModal" id="pdpModal" aria-hidden="true">
@@ -501,11 +506,13 @@
           </div>
 
           <div class="pdpRating">
-            <div id="pdpStars"></div>
-            <span class="pdpMeta" id="pdpRatingMeta">0,0 · 0 avis</span>
+  <div id="pdpStars" class="pdpStars" data-open-reviews></div>
+  <span id="pdpRatingMeta">0,0 · 0 avis</span>
 
-             <button class="btnReview" type="button" id="pdpReviewBtn">Laisser un avis</button>
-          </div>
+  <button class="btnReviewSmall" id="pdpReviewBtn">
+    Laisser un avis
+  </button>
+</div>
 
 
           <p class="pdpDesc" id="pdpDesc"></p>
